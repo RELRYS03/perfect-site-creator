@@ -1,5 +1,5 @@
 # ExpressArte Studio
-- [ ] Criar identidade visual e editor 3D interativo.
-- [ ] Implementar biblioteca de formas, personalização e exportação.
-- [ ] Adicionar projetos de sessão, calculadora e inspeção de malhas.
-- [ ] Verificar o fluxo principal e telas menores.
+- [x] Criar identidade visual e editor 3D interativo.
+- [x] Implementar biblioteca de 15 formas, personalização e exportação STL/GLB.
+- [x] Adicionar projetos de sessão com download/importação, calculadora e inspeção de malhas.
+- [x] Verificar criação, projetos, exportações e telas menores.
