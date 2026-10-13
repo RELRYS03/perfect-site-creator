@@ -80,15 +80,24 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "ExpressArte Studio — Criação 3D" },
-      { name: "description", content: "Crie formas e medalhas personalizadas no ExpressArte Studio." },
+      {
+        name: "description",
+        content: "Crie formas e medalhas personalizadas no ExpressArte Studio.",
+      },
       { name: "author", content: "ExpressArte" },
       { property: "og:title", content: "ExpressArte Studio — Criação 3D" },
-      { property: "og:description", content: "Crie formas e medalhas personalizadas no ExpressArte Studio." },
+      {
+        property: "og:description",
+        content: "Crie formas e medalhas personalizadas no ExpressArte Studio.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
     links: [
-      { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" },
+      {
+        rel: "stylesheet",
+        href: "https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap",
+      },
       {
         rel: "stylesheet",
         href: appCss,
@@ -122,7 +131,9 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-      <StudioProvider><Outlet /></StudioProvider>
+      <StudioProvider>
+        <Outlet />
+      </StudioProvider>
     </QueryClientProvider>
   );
 }
