@@ -8,3 +8,7 @@
 > Commits you push to the connected branch sync back to Lovable and show up in
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
+
+- Use the root StudioProvider for in-session model configuration and projects so navigation preserves edits; durable saving is explicit JSON download/import, not browser storage.
+- Keep browser 3D rendering in the lazy ModelScene behind ClientOnly, using Three.js for geometry and STL/GLB exports; hosted runtime cannot execute the uploaded Windows/Blender subprocess scripts.
+- Define visual roles in src/styles.css and use shared Button controls to maintain the editor's semantic design system.
