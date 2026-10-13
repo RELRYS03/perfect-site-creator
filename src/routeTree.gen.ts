@@ -10,33 +10,102 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as CalculadoraRouteImport } from './routes/calculadora'
+import { Route as ComunidadeRouteImport } from './routes/comunidade'
+import { Route as FormasRouteImport } from './routes/formas'
+import { Route as MeshDoctorRouteImport } from './routes/mesh-doctor'
+import { Route as ProjetosRouteImport } from './routes/projetos'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CalculadoraRoute = CalculadoraRouteImport.update({
+  id: '/calculadora',
+  path: '/calculadora',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ComunidadeRoute = ComunidadeRouteImport.update({
+  id: '/comunidade',
+  path: '/comunidade',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FormasRoute = FormasRouteImport.update({
+  id: '/formas',
+  path: '/formas',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MeshDoctorRoute = MeshDoctorRouteImport.update({
+  id: '/mesh-doctor',
+  path: '/mesh-doctor',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProjetosRoute = ProjetosRouteImport.update({
+  id: '/projetos',
+  path: '/projetos',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/calculadora': typeof CalculadoraRoute
+  '/comunidade': typeof ComunidadeRoute
+  '/formas': typeof FormasRoute
+  '/mesh-doctor': typeof MeshDoctorRoute
+  '/projetos': typeof ProjetosRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/calculadora': typeof CalculadoraRoute
+  '/comunidade': typeof ComunidadeRoute
+  '/formas': typeof FormasRoute
+  '/mesh-doctor': typeof MeshDoctorRoute
+  '/projetos': typeof ProjetosRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/calculadora': typeof CalculadoraRoute
+  '/comunidade': typeof ComunidadeRoute
+  '/formas': typeof FormasRoute
+  '/mesh-doctor': typeof MeshDoctorRoute
+  '/projetos': typeof ProjetosRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/calculadora'
+    | '/comunidade'
+    | '/formas'
+    | '/mesh-doctor'
+    | '/projetos'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/calculadora'
+    | '/comunidade'
+    | '/formas'
+    | '/mesh-doctor'
+    | '/projetos'
+  id:
+    | '__root__'
+    | '/'
+    | '/calculadora'
+    | '/comunidade'
+    | '/formas'
+    | '/mesh-doctor'
+    | '/projetos'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  CalculadoraRoute: typeof CalculadoraRoute
+  ComunidadeRoute: typeof ComunidadeRoute
+  FormasRoute: typeof FormasRoute
+  MeshDoctorRoute: typeof MeshDoctorRoute
+  ProjetosRoute: typeof ProjetosRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +117,51 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/calculadora': {
+      id: '/calculadora'
+      path: '/calculadora'
+      fullPath: '/calculadora'
+      preLoaderRoute: typeof CalculadoraRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/comunidade': {
+      id: '/comunidade'
+      path: '/comunidade'
+      fullPath: '/comunidade'
+      preLoaderRoute: typeof ComunidadeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/formas': {
+      id: '/formas'
+      path: '/formas'
+      fullPath: '/formas'
+      preLoaderRoute: typeof FormasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/mesh-doctor': {
+      id: '/mesh-doctor'
+      path: '/mesh-doctor'
+      fullPath: '/mesh-doctor'
+      preLoaderRoute: typeof MeshDoctorRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/projetos': {
+      id: '/projetos'
+      path: '/projetos'
+      fullPath: '/projetos'
+      preLoaderRoute: typeof ProjetosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  CalculadoraRoute: CalculadoraRoute,
+  ComunidadeRoute: ComunidadeRoute,
+  FormasRoute: FormasRoute,
+  MeshDoctorRoute: MeshDoctorRoute,
+  ProjetosRoute: ProjetosRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
