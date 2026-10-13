@@ -8,7 +8,7 @@ export const defaultConfig: ModelConfig = { name: "EXPRESS ARTE", shape: 'circle
 export const materials = [{id:'bronze',name:'Bronze acetinado'},{id:'gold',name:'Dourado'},{id:'silver',name:'Prata'},{id:'rose',name:'Cobre rosé'},{id:'jade',name:'Verde jade'},{id:'graphite',name:'Grafite'}];
 export const shapes: {name:string;kind:ShapeKind;category:string}[] = [
  ['Círculo','circle','Básicas'],['Hexágono','hexagon','Básicas'],['Escudo','shield','Especiais'],['Quadrado','square','Básicas'],['Coração','heart','Especiais'],['Estrela','star','Especiais'],['Oval','oval','Básicas'],['Retângulo','rectangle','Básicas'],['Triângulo','triangle','Básicas'],['Pentágono','pentagon','Básicas'],['Octógono','octagon','Básicas'],['Losango','diamond','Básicas'],['Flor','flower','Especiais'],['Cruz','cross','Especiais'],['Arco','arch','Especiais']
-].map(([name,kind,category])=>({name,kind:kind as ShapeKind,category}));
+] .map(([name='',kind='circle',category='Básicas'])=>({name,kind:kind as ShapeKind,category}));
 const font = new FontLoader().parse(fontData);
 export function outline(kind:ShapeKind, radius:number): THREE.Shape {
  const shape = new THREE.Shape();
@@ -17,11 +17,11 @@ export function outline(kind:ShapeKind, radius:number): THREE.Shape {
  if(kind==='shield') {shape.moveTo(-radius*.85,radius*.85);shape.lineTo(radius*.85,radius*.85);shape.lineTo(radius*.85,0);shape.quadraticCurveTo(radius*.7,-radius*.65,0,-radius);shape.quadraticCurveTo(-radius*.7,-radius*.65,-radius*.85,0);shape.closePath();return shape;}
  if(kind==='arch') {shape.moveTo(-radius,-radius);shape.lineTo(radius,-radius);shape.lineTo(radius,0);shape.absarc(0,0,radius,0,Math.PI,false);shape.closePath();return shape;}
  if(kind==='square'||kind==='rectangle') {const h=kind==='rectangle'?radius*.65:radius*.82;const w=radius*.82;shape.moveTo(-w,-h);shape.lineTo(w,-h);shape.lineTo(w,h);shape.lineTo(-w,h);shape.closePath();return shape;}
- if(kind==='cross') {const points=[[-.3,1],[.3,1],[.3,.3],[1,.3],[1,-.3],[.3,-.3],[.3,-1],[-.3,-1],[-.3,-.3],[-1,-.3],[-1,.3],[-.3,.3]];points.forEach(([x,y],i)=>i?shape.lineTo(x*radius,y*radius):shape.moveTo(x*radius,y*radius));shape.closePath();return shape;}
+ if(kind==='cross') {const points:[number,number][]=[[-.3,1],[.3,1],[.3,.3],[1,.3],[1,-.3],[.3,-.3],[.3,-1],[-.3,-1],[-.3,-.3],[-1,-.3],[-1,.3],[-.3,.3]];points.forEach(([x,y],i)=>i?shape.lineTo(x*radius,y*radius):shape.moveTo(x*radius,y*radius));shape.closePath();return shape;}
  const n=kind==='triangle'?3:kind==='pentagon'?5:kind==='hexagon'?6:kind==='octagon'?8:kind==='diamond'?4:kind==='flower'?24:10;
  for(let i=0;i<n;i++){const a=Math.PI/2+i*2*Math.PI/n;const r=kind==='star'?(i%2?radius*.48:radius):kind==='flower'?(radius*(.86+.14*Math.cos(i*Math.PI/2))):radius;const x=Math.cos(a)*r,y=Math.sin(a)*r;i?shape.lineTo(x,y):shape.moveTo(x,y);}shape.closePath();return shape;
 }
-function tokenColor(name:string){if(typeof document==='undefined')return new THREE.Color(.6,.4,.2);const canvas=document.createElement('canvas');canvas.width=1;canvas.height=1;const ctx=canvas.getContext('2d');if(!ctx)return new THREE.Color(.6,.4,.2);ctx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue(name).trim();ctx.fillRect(0,0,1,1);const p=ctx.getImageData(0,0,1,1).data;return new THREE.Color().setRGB(p[0]/255,p[1]/255,p[2]/255,THREE.SRGBColorSpace);}
+function tokenColor(name:string){if(typeof document==='undefined')return new THREE.Color(.6,.4,.2);const canvas=document.createElement('canvas');canvas.width=1;canvas.height=1;const ctx=canvas.getContext('2d');if(!ctx)return new THREE.Color(.6,.4,.2);ctx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue(name).trim();ctx.fillRect(0,0,1,1);const p=ctx.getImageData(0,0,1,1).data;return new THREE.Color().setRGB((p[0]??0)/255,(p[1]??0)/255,(p[2]??0)/255,THREE.SRGBColorSpace);}
 export function sceneColor(name:string){return tokenColor(name);}
 export function buildModel(config:ModelConfig){
  const group=new THREE.Group();const radius=config.diameter/2;const baseMaterial=new THREE.MeshStandardMaterial({color:tokenColor('--model-'+config.material),metalness:.72,roughness:.3});
