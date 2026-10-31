@@ -7,18 +7,24 @@ import {
   type SetStateAction,
 } from "react";
 import { defaultConfig, type ModelConfig } from "@/lib/studio/model";
+import { defaultOrganizerConfig, type OrganizerConfig } from "@/lib/organizer/organizer";
 export type Project = { id: number; config: ModelConfig };
 const StudioContext = createContext<{
   config: ModelConfig;
   setConfig: Dispatch<SetStateAction<ModelConfig>>;
   projects: Project[];
   setProjects: Dispatch<SetStateAction<Project[]>>;
+  organizer: OrganizerConfig;
+  setOrganizer: Dispatch<SetStateAction<OrganizerConfig>>;
 } | null>(null);
 export function StudioProvider({ children }: { children: ReactNode }) {
   const [config, setConfig] = useState<ModelConfig>(defaultConfig);
   const [projects, setProjects] = useState<Project[]>([]);
+  const [organizer, setOrganizer] = useState<OrganizerConfig>(defaultOrganizerConfig);
   return (
-    <StudioContext.Provider value={{ config, setConfig, projects, setProjects }}>
+    <StudioContext.Provider
+      value={{ config, setConfig, projects, setProjects, organizer, setOrganizer }}
+    >
       {children}
     </StudioContext.Provider>
   );

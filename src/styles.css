@@ -1115,3 +1115,21 @@ input[type="range"] {
     scroll-behavior: auto !important;
   }
 }
+
+/* Organizador 3D */
+.organizer-layout { display: grid; grid-template-columns: 260px 1fr 280px; gap: 1rem; padding: 0 1.5rem 1.5rem; min-height: 620px; }
+.organizer-panel, .organizer-summary { display: flex; flex-direction: column; gap: 0.9rem; padding: 1rem; border: 1px solid var(--border); border-radius: 0.75rem; background: var(--card); }
+.organizer-panel fieldset { display: grid; gap: 0.5rem; border: 0; padding: 0; margin: 0; }
+.organizer-panel legend { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted-foreground); margin-bottom: 0.35rem; }
+.organizer-field { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; font-size: 0.85rem; }
+.organizer-field input, .organizer-field select { width: 6.5rem; padding: 0.3rem 0.45rem; border: 1px solid var(--input); border-radius: 0.4rem; background: var(--background); color: var(--foreground); }
+.organizer-viewport { position: relative; border-radius: 0.75rem; overflow: hidden; background: var(--viewport); min-height: 520px; }
+.organizer-viewport .scene-container { position: absolute; inset: 0; }
+.organizer-view-tabs { position: absolute; top: 0.75rem; left: 0.75rem; z-index: 2; display: flex; gap: 0.4rem; }
+.organizer-summary h2 { font-weight: 700; }
+.organizer-summary dl { display: grid; gap: 0.2rem; font-size: 0.85rem; }
+.organizer-summary dt { color: var(--muted-foreground); font-size: 0.75rem; margin-top: 0.4rem; }
+.organizer-warning { display: flex; gap: 0.4rem; font-size: 0.8rem; color: var(--destructive); }
+.organizer-warning svg { flex: none; width: 1rem; height: 1rem; }
+.organizer-note { font-size: 0.75rem; color: var(--muted-foreground); }
+@media (max-width: 1100px) { .organizer-layout { grid-template-columns: 1fr; } .organizer-viewport { min-height: 420px; } }
