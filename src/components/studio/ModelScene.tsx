@@ -2,18 +2,31 @@ import { useEffect, useRef } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { buildModel, disposeModel, sceneColor, type ModelConfig } from "@/lib/studio/model";
+function disposeAny(group: THREE.Object3D) {
+  group.traverse((child) => {
+    if (child instanceof THREE.LineSegments) {
+      child.geometry.dispose();
+      (child.material as THREE.Material).dispose();
+    }
+  });
+  disposeModel(group);
+}
 export default function ModelScene({
   config,
   view,
   zoom,
   reset,
   wireframe,
+  buildObject,
+  distanceScale = 1,
 }: {
   config: ModelConfig;
   view: string;
   zoom: number;
   reset: number;
   wireframe: boolean;
+  buildObject?: () => THREE.Object3D;
+  distanceScale?: number;
 }) {
   const host = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<{
@@ -93,7 +106,7 @@ export default function ModelScene({
       observer.disconnect();
       controls.dispose();
       const current = sceneRef.current;
-      if (current?.model) disposeModel(current.model);
+      if (current?.model) disposeAny(current.model);
       floor.geometry.dispose();
       (floor.material as THREE.Material).dispose();
       grid.geometry.dispose();
@@ -108,12 +121,14 @@ export default function ModelScene({
     if (!current) return;
     if (current.model) {
       current.scene.remove(current.model);
-      disposeModel(current.model);
+      disposeAny(current.model);
     }
-    const model = buildModel(config);
-    model.rotation.x = -Math.PI / 2;
-    model.rotation.z = -0.1;
-    model.position.y = 1;
+    const model = (buildObject ? buildObject() : buildModel(config)) as THREE.Group;
+    if (!buildObject) {
+      model.rotation.x = -Math.PI / 2;
+      model.rotation.z = -0.1;
+      model.position.y = 1;
+    }
     model.traverse((child) => {
       if (child instanceof THREE.Mesh) {
         const mats = Array.isArray(child.material) ? child.material : [child.material];
@@ -124,18 +139,20 @@ export default function ModelScene({
     });
     current.scene.add(model);
     current.model = model;
-  }, [config, wireframe]);
+  }, [config, wireframe, buildObject]);
   useEffect(() => {
     const current = sceneRef.current;
     if (!current) return;
     const { camera, controls } = current;
-    if (view === "2d") camera.position.set(0, 240, 1);
-    else camera.position.set(110, 135, 165);
+    const s = distanceScale;
+    controls.maxDistance = 500 * s;
+    if (view === "2d") camera.position.set(0, 240 * s, 1);
+    else camera.position.set(110 * s, 135 * s, 165 * s);
     camera.zoom = zoom / 100;
     camera.updateProjectionMatrix();
     controls.target.set(0, 5, 0);
     controls.update();
-  }, [view, zoom, reset]);
+  }, [view, zoom, reset, distanceScale]);
   return (
     <div className="scene-container" ref={host} aria-label="Modelo 3D interativo da medalha" />
   );

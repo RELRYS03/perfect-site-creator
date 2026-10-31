@@ -14,6 +14,7 @@ import { Route as CalculadoraRouteImport } from './routes/calculadora'
 import { Route as ComunidadeRouteImport } from './routes/comunidade'
 import { Route as FormasRouteImport } from './routes/formas'
 import { Route as MeshDoctorRouteImport } from './routes/mesh-doctor'
+import { Route as OrganizadorRouteImport } from './routes/organizador'
 import { Route as ProjetosRouteImport } from './routes/projetos'
 
 const IndexRoute = IndexRouteImport.update({
@@ -41,6 +42,11 @@ const MeshDoctorRoute = MeshDoctorRouteImport.update({
   path: '/mesh-doctor',
   getParentRoute: () => rootRouteImport,
 } as any)
+const OrganizadorRoute = OrganizadorRouteImport.update({
+  id: '/organizador',
+  path: '/organizador',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ProjetosRoute = ProjetosRouteImport.update({
   id: '/projetos',
   path: '/projetos',
@@ -53,6 +59,7 @@ export interface FileRoutesByFullPath {
   '/comunidade': typeof ComunidadeRoute
   '/formas': typeof FormasRoute
   '/mesh-doctor': typeof MeshDoctorRoute
+  '/organizador': typeof OrganizadorRoute
   '/projetos': typeof ProjetosRoute
 }
 export interface FileRoutesByTo {
@@ -61,6 +68,7 @@ export interface FileRoutesByTo {
   '/comunidade': typeof ComunidadeRoute
   '/formas': typeof FormasRoute
   '/mesh-doctor': typeof MeshDoctorRoute
+  '/organizador': typeof OrganizadorRoute
   '/projetos': typeof ProjetosRoute
 }
 export interface FileRoutesById {
@@ -70,6 +78,7 @@ export interface FileRoutesById {
   '/comunidade': typeof ComunidadeRoute
   '/formas': typeof FormasRoute
   '/mesh-doctor': typeof MeshDoctorRoute
+  '/organizador': typeof OrganizadorRoute
   '/projetos': typeof ProjetosRoute
 }
 export interface FileRouteTypes {
@@ -80,6 +89,7 @@ export interface FileRouteTypes {
     | '/comunidade'
     | '/formas'
     | '/mesh-doctor'
+    | '/organizador'
     | '/projetos'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -88,6 +98,7 @@ export interface FileRouteTypes {
     | '/comunidade'
     | '/formas'
     | '/mesh-doctor'
+    | '/organizador'
     | '/projetos'
   id:
     | '__root__'
@@ -96,6 +107,7 @@ export interface FileRouteTypes {
     | '/comunidade'
     | '/formas'
     | '/mesh-doctor'
+    | '/organizador'
     | '/projetos'
   fileRoutesById: FileRoutesById
 }
@@ -105,6 +117,7 @@ export interface RootRouteChildren {
   ComunidadeRoute: typeof ComunidadeRoute
   FormasRoute: typeof FormasRoute
   MeshDoctorRoute: typeof MeshDoctorRoute
+  OrganizadorRoute: typeof OrganizadorRoute
   ProjetosRoute: typeof ProjetosRoute
 }
 
@@ -145,6 +158,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MeshDoctorRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/organizador': {
+      id: '/organizador'
+      path: '/organizador'
+      fullPath: '/organizador'
+      preLoaderRoute: typeof OrganizadorRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/projetos': {
       id: '/projetos'
       path: '/projetos'
@@ -161,6 +181,7 @@ const rootRouteChildren: RootRouteChildren = {
   ComunidadeRoute: ComunidadeRoute,
   FormasRoute: FormasRoute,
   MeshDoctorRoute: MeshDoctorRoute,
+  OrganizadorRoute: OrganizadorRoute,
   ProjetosRoute: ProjetosRoute,
 }
 export const routeTree = rootRouteImport

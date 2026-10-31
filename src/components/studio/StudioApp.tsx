@@ -45,9 +45,10 @@ import { ShapeIcon } from "./ShapeIcon";
 import { useStudio } from "./StudioProvider";
 const ModelScene = lazy(() => import("./ModelScene"));
 export type StudioPage = "studio" | "formas" | "projetos" | "calculadora" | "mesh" | "comunidade";
-const nav = [
+export const nav = [
   { to: "/", label: "Studio 3D", icon: Box, page: "studio" },
   { to: "/formas", label: "Formas", icon: Shapes, page: "formas" },
+  { to: "/organizador", label: "Organizador 3D", icon: Layers, page: "organizador" },
   { to: "/projetos", label: "Meus projetos", icon: FolderOpen, page: "projetos" },
   { to: "/calculadora", label: "Calculadora", icon: Calculator, page: "calculadora" },
   { to: "/mesh-doctor", label: "Mesh Doctor", icon: Stethoscope, page: "mesh" },
