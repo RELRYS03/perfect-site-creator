@@ -43,6 +43,7 @@ import {
 } from "@/lib/studio/model";
 import { ShapeIcon } from "./ShapeIcon";
 import { useStudio } from "./StudioProvider";
+import { isSTLFileWithinLimit, MAX_STL_FILE_MB } from "@/lib/studio/uploadLimits";
 const ModelScene = lazy(() => import("./ModelScene"));
 export type StudioPage = "studio" | "formas" | "projetos" | "calculadora" | "mesh" | "comunidade";
 export const nav = [
@@ -205,8 +206,8 @@ export default function StudioApp({ page = "studio" }: { page?: StudioPage }) {
     }
   };
   const inspectFile = async (file: File) => {
-    if (file.size > 20 * 1024 * 1024) {
-      notify("O limite é de 20 MB por arquivo.");
+    if (!isSTLFileWithinLimit(file.size)) {
+      notify(`O limite é de ${MAX_STL_FILE_MB} MB por arquivo.`);
       return;
     }
     try {
@@ -790,7 +791,7 @@ export default function StudioApp({ page = "studio" }: { page?: StudioPage }) {
             <div className="upload-zone">
               <Stethoscope />
               <h2>Inspecionar uma malha</h2>
-              <p>Arquivo STL · até 20 MB</p>
+              <p>Arquivo STL · até {MAX_STL_FILE_MB} MB</p>
               <input
                 type="file"
                 accept=".stl"

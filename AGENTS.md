@@ -13,3 +13,4 @@
 - Keep browser 3D rendering in the lazy ModelScene behind ClientOnly, using Three.js for geometry and STL/GLB exports; hosted runtime cannot execute the uploaded Windows/Blender subprocess scripts.
 - Define visual roles in src/styles.css and use shared Button controls to maintain the editor's semantic design system.
 - Keep Organizador 3D geometry in pure TS (src/lib/organizer) with tests; it is independent from the medal buildModel so the medal editor stays untouched.
+- Define STL upload validation in the shared uploadLimits module so the displayed limit and the file-size check stay consistent.
