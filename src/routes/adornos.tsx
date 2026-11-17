@@ -2,7 +2,6 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
-import { STLExporter } from "three/examples/jsm/exporters/STLExporter.js";
 
 export const Route = createFileRoute("/adornos")({ component: AdornosPage });
 
@@ -74,7 +73,16 @@ function makeDisk(name: ShapeName, diameter: number, pattern: MeshName, pitch: n
       lines.push([-bound, d, bound, d], [-bound, -bound + d, bound, bound + d], [-bound, bound - d, bound, -bound - d]);
     }
   }
-  const inside = (x: number, y: number) => shape.containsPoint(new THREE.Vector2(x / size, y / size));
+  const polygon = outlinePoints;
+  const inside = (x: number, y: number) => {
+    const px = x / size, py = y / size;
+    let found = false;
+    for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+      const a = polygon[i], b = polygon[j];
+      if ((a.y > py) !== (b.y > py) && px < ((b.x - a.x) * (py - a.y)) / (b.y - a.y) + a.x) found = !found;
+    }
+    return found;
+  };
   const segments: THREE.Vector3[] = [];
   // Sample straight lattice bars into short pieces, clipping them to the chosen silhouette.
   for (const [ax, ay, bx, by] of lines) {
