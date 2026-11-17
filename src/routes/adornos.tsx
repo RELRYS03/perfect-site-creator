@@ -2,14 +2,15 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+import { makeStarBox } from "../lib/adornos/starBox";
 
 export const Route = createFileRoute("/adornos")({ component: AdornosPage });
 
-type ShapeName = "Bola" | "Pato" | "Porco" | "Gato" | "Cachorro" | "Estrela" | "Árvore" | "Coração";
+type ShapeName = "Bola" | "Pato" | "Porco" | "Gato" | "Cachorro" | "Estrela" | "Estrela-caixa" | "Árvore" | "Coração";
 type MeshName = "Grade" | "Diamante" | "Triângulos";
-const shapes: ShapeName[] = ["Bola", "Pato", "Porco", "Gato", "Cachorro", "Estrela", "Árvore", "Coração"];
+const shapes: ShapeName[] = ["Bola", "Pato", "Porco", "Gato", "Cachorro", "Estrela", "Estrela-caixa", "Árvore", "Coração"];
 const meshes: MeshName[] = ["Grade", "Diamante", "Triângulos"];
-const icons: Record<ShapeName, string> = { Bola: "🔴", Pato: "🦆", Porco: "🐷", Gato: "🐱", Cachorro: "🐶", Estrela: "⭐", Árvore: "🎄", Coração: "♥" };
+const icons: Record<ShapeName, string> = { Bola: "🔴", Pato: "🦆", Porco: "🐷", Gato: "🐱", Cachorro: "🐶", Estrela: "⭐", "Estrela-caixa": "✳", Árvore: "🎄", Coração: "♥" };
 
 function outline(name: ShapeName): THREE.Shape {
   const s = new THREE.Shape();
@@ -139,13 +140,14 @@ function Preview({ model, view, wire }: { model: THREE.Group; view: string; wire
 }
 
 function AdornosPage() {
-  const [shape, setShape] = useState<ShapeName>("Bola");
+  const [shape, setShape] = useState<ShapeName>("Estrela-caixa");
   const [pattern, setPattern] = useState<MeshName>("Grade");
   const [diameter, setDiameter] = useState(80);
   const [pitch, setPitch] = useState(9);
+  const [boxHeight, setBoxHeight] = useState(20);
   const [view, setView] = useState("3D");
   const [wire, setWire] = useState(false);
-  const model = useMemo(() => makeDisk(shape, diameter, pattern, pitch), [shape, diameter, pattern, pitch]);
+  const model = useMemo(() => shape === "Estrela-caixa" ? makeStarBox(diameter, boxHeight) : makeDisk(shape, diameter, pattern, pitch), [shape, diameter, pattern, pitch, boxHeight]);
   useEffect(() => () => { model.traverse(o => { if (o instanceof THREE.Mesh || o instanceof THREE.LineSegments) { o.geometry.dispose(); const mats = Array.isArray(o.material) ? o.material : [o.material]; mats.forEach(m => m.dispose()); } }); }, [model]);
   const button = "rounded-md border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:border-blue-500 focus-visible:outline-2 focus-visible:outline-blue-500";
   return (
@@ -166,10 +168,11 @@ function AdornosPage() {
           <h2 className="mt-6 text-xs font-bold uppercase tracking-wider">02 · Diâmetro</h2>
           <div className="mt-2 flex flex-wrap gap-2">{[60, 80, 100].map(v => <button key={v} className={button + (diameter === v ? " !border-blue-600 !bg-blue-50" : "")} onClick={() => setDiameter(v)}>{v} mm</button>)}</div>
           <label className="mt-3 block text-xs text-slate-500">Personalizado: {diameter} mm<input aria-label="Diâmetro em milímetros" className="mt-1 w-full" type="range" min="40" max="160" step="5" value={diameter} onChange={e => setDiameter(Number(e.target.value))} /></label>
-          <h2 className="mt-6 text-xs font-bold uppercase tracking-wider">03 · Padrão de malha</h2>
+          {shape === "Estrela-caixa" && <label className="mt-5 block text-xs text-slate-600">Altura da caixinha: {boxHeight} mm<input aria-label="Altura da caixa em milímetros" className="mt-2 w-full" type="range" min="10" max="40" step="2" value={boxHeight} onChange={e => setBoxHeight(Number(e.target.value))} /></label>}
+          {shape !== "Estrela-caixa" && <><h2 className="mt-6 text-xs font-bold uppercase tracking-wider">03 · Padrão de malha</h2>
           <div className="mt-2 flex flex-wrap gap-2">{meshes.map(name => <button key={name} onClick={() => setPattern(name)} className={button + (pattern === name ? " !border-blue-600 !bg-blue-50" : "")}>{name}</button>)}</div>
-          <label className="mt-3 block text-xs text-slate-500">Espaçamento: {pitch} mm<input aria-label="Espaçamento da malha" className="mt-1 w-full" type="range" min="5" max="18" value={pitch} onChange={e => setPitch(Number(e.target.value))} /></label>
-          <div className="mt-6 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900">O molde, as duas metades, os encaixes e a exportação STL/3MF ainda não estão implementados. Esta etapa serve para validar o layout e a aparência da geometria.</div>
+          <label className="mt-3 block text-xs text-slate-500">Espaçamento: {pitch} mm<input aria-label="Espaçamento da malha" className="mt-1 w-full" type="range" min="5" max="18" value={pitch} onChange={e => setPitch(Number(e.target.value))} /></label></>}
+          <div className="mt-6 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900">A estrela-caixinha tem fundo e paredes em 3D. A tampa, os encaixes e a exportação STL/3MF ainda não estão implementados nem validados para impressão.</div>
         </aside>
         <main className="flex min-h-[360px] min-w-0 flex-1 flex-col">
           <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2">
@@ -178,7 +181,7 @@ function AdornosPage() {
           </div>
           <div className="relative min-h-0 flex-1"><Preview model={model} view={view} wire={wire} /></div>
           <footer className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-200 bg-white p-3">
-            <div><strong className="text-sm">ADORNO {shape.toUpperCase()}</strong><p className="text-xs text-slate-500">Prévia geométrica em desenvolvimento</p></div>
+            <div><strong className="text-sm">ADORNO {shape.toUpperCase()}</strong><p className="text-xs text-slate-500">{shape === "Estrela-caixa" ? `Caixa aberta · ${diameter} mm · altura ${boxHeight} mm · sem tampa` : "Prévia geométrica em desenvolvimento"}</p></div>
             <div className="flex gap-2"><button disabled title="Disponível após validação da geometria imprimível" className={button + " cursor-not-allowed opacity-50"}>Exportar STL</button><button disabled title="Disponível em etapa posterior" className="cursor-not-allowed rounded-md bg-blue-600 px-4 py-2 text-xs font-bold text-white opacity-50">Exportar 3MF</button></div>
           </footer>
         </main>
