@@ -7,10 +7,10 @@ export const Route = createFileRoute("/")({
       {
         name: "description",
         content:
-          "Personalize medalhas 3D com texto em relevo, formas e acabamentos e exporte STL e GLB.",
+          "Crie medalhas e adornos 3D com padrões perfurados, encaixes ajustáveis e exportação STL e GLB.",
       },
       { property: "og:title", content: "Studio 3D — ExpressArte" },
-      { property: "og:description", content: "Transforme ideias em medalhas 3D personalizadas." },
+      { property: "og:description", content: "Personalize medalhas e adornos 3D para fabricação." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],

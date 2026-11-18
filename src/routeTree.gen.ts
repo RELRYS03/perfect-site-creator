@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AdornosRouteImport } from './routes/adornos'
 import { Route as CalculadoraRouteImport } from './routes/calculadora'
 import { Route as ComunidadeRouteImport } from './routes/comunidade'
 import { Route as FormasRouteImport } from './routes/formas'
@@ -20,6 +21,11 @@ import { Route as ProjetosRouteImport } from './routes/projetos'
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdornosRoute = AdornosRouteImport.update({
+  id: '/adornos',
+  path: '/adornos',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CalculadoraRoute = CalculadoraRouteImport.update({
@@ -55,6 +61,7 @@ const ProjetosRoute = ProjetosRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/adornos': typeof AdornosRoute
   '/calculadora': typeof CalculadoraRoute
   '/comunidade': typeof ComunidadeRoute
   '/formas': typeof FormasRoute
@@ -64,6 +71,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/adornos': typeof AdornosRoute
   '/calculadora': typeof CalculadoraRoute
   '/comunidade': typeof ComunidadeRoute
   '/formas': typeof FormasRoute
@@ -74,6 +82,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/adornos': typeof AdornosRoute
   '/calculadora': typeof CalculadoraRoute
   '/comunidade': typeof ComunidadeRoute
   '/formas': typeof FormasRoute
@@ -85,6 +94,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/adornos'
     | '/calculadora'
     | '/comunidade'
     | '/formas'
@@ -94,6 +104,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/adornos'
     | '/calculadora'
     | '/comunidade'
     | '/formas'
@@ -103,6 +114,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/adornos'
     | '/calculadora'
     | '/comunidade'
     | '/formas'
@@ -113,6 +125,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AdornosRoute: typeof AdornosRoute
   CalculadoraRoute: typeof CalculadoraRoute
   ComunidadeRoute: typeof ComunidadeRoute
   FormasRoute: typeof FormasRoute
@@ -128,6 +141,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/adornos': {
+      id: '/adornos'
+      path: '/adornos'
+      fullPath: '/adornos'
+      preLoaderRoute: typeof AdornosRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/calculadora': {
@@ -177,6 +197,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AdornosRoute: AdornosRoute,
   CalculadoraRoute: CalculadoraRoute,
   ComunidadeRoute: ComunidadeRoute,
   FormasRoute: FormasRoute,

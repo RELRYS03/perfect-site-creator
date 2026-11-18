@@ -1,4 +1,4 @@
-import { lazy, Suspense, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useRef, useState } from "react";
 import { Link, ClientOnly } from "@tanstack/react-router";
 import {
   Box,
@@ -29,6 +29,7 @@ import {
   Save,
   Trash2,
   CircleHelp,
+  Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -41,13 +42,23 @@ import {
   type ModelConfig,
   type ShapeKind,
 } from "@/lib/studio/model";
+import { validatePressOrnamentConfig, type PressOrnamentConfig } from "@/lib/studio/ornament-press";
 import { ShapeIcon } from "./ShapeIcon";
 import { useStudio } from "./StudioProvider";
 import { isSTLFileWithinLimit, MAX_STL_FILE_MB } from "@/lib/studio/uploadLimits";
+import {
+  buildOrnament,
+  defaultOrnamentConfig,
+  disposeOrnament,
+  validateOrnamentConfig,
+  type LatticePattern,
+  type OrnamentConfig,
+} from "@/lib/studio/ornament";
 const ModelScene = lazy(() => import("./ModelScene"));
-export type StudioPage = "studio" | "formas" | "projetos" | "calculadora" | "mesh" | "comunidade";
+export type StudioPage = "studio" | "adornos" | "formas" | "projetos" | "calculadora" | "mesh" | "comunidade";
 export const nav = [
   { to: "/", label: "Studio 3D", icon: Box, page: "studio" },
+  { to: "/adornos", label: "Adornos", icon: Sparkles, page: "adornos" },
   { to: "/formas", label: "Formas", icon: Shapes, page: "formas" },
   { to: "/organizador", label: "Organizador 3D", icon: Layers, page: "organizador" },
   { to: "/projetos", label: "Meus projetos", icon: FolderOpen, page: "projetos" },
@@ -57,13 +68,13 @@ export const nav = [
 ] as const;
 const titles: Record<StudioPage, [string, string]> = {
   studio: ["Studio 3D", "Sua ideia ganha forma. Crie, personalize e prepare para imprimir."],
+  adornos: ["Adornos de prensagem", "Crie malhas, moldes e enfeites de duas metades."],
   formas: ["Biblioteca de formas", "Escolha o ponto de partida da sua próxima criação."],
   projetos: ["Meus projetos", "Suas criações nesta sessão."],
   calculadora: ["Calculadora de impressão", "Materiais, energia e tempo de produção."],
   mesh: ["Mesh Doctor", "Inspeção de arquivos STL para impressão 3D."],
   comunidade: ["Comunidade", "Um espaço para quem transforma ideias em arte."],
 };
-type Project = { id: number; config: ModelConfig };
 function RangeField({
   label,
   value,
@@ -127,13 +138,15 @@ function Toggle({
   );
 }
 export default function StudioApp({ page = "studio" }: { page?: StudioPage }) {
-  const { config, setConfig, projects, setProjects } = useStudio();
+  const { config, setConfig, projects, setProjects, setPressOrnament } = useStudio();
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("Todas");
   const [view, setView] = useState("3d");
   const [zoom, setZoom] = useState(100);
   const [reset, setReset] = useState(0);
   const [wireframe, setWireframe] = useState(false);
+  const [editorMode, setEditorMode] = useState<"medalha" | "ornament">("medalha");
+  const [ornamentConfig, setOrnamentConfig] = useState<OrnamentConfig>(defaultOrnamentConfig);
   const [dialog, setDialog] = useState<"export" | "blender" | "help" | null>(null);
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
@@ -156,6 +169,12 @@ export default function StudioApp({ page = "studio" }: { page?: StudioPage }) {
   const workspaceRef = useRef<HTMLDivElement>(null);
   const update = <K extends keyof ModelConfig>(key: K, value: ModelConfig[K]) =>
     setConfig((c) => ({ ...c, [key]: value }));
+  const updateOrnament = <K extends keyof OrnamentConfig>(key: K, value: OrnamentConfig[K]) =>
+    setOrnamentConfig((current) => validateOrnamentConfig({ ...current, [key]: value }));
+  const buildOrnamentPreview = useCallback(
+    () => buildOrnament(ornamentConfig),
+    [ornamentConfig],
+  );
   const notify = (text: string) => {
     setNotice(text);
     setTimeout(() => setNotice(""), 3500);
@@ -166,6 +185,24 @@ export default function StudioApp({ page = "studio" }: { page?: StudioPage }) {
       s.name.toLowerCase().includes(search.toLowerCase()),
   );
   const save = () => {
+    if (editorMode === "ornament") {
+      const project = {
+        format: "Perfect Site Creator",
+        version: 1,
+        type: "perforated-ornament",
+        config: ornamentConfig,
+      };
+      setProjects((p) => [
+        ...p,
+        { id: Date.now(), kind: "ornament", ornamentConfig: { ...ornamentConfig } },
+      ]);
+      downloadBlob(
+        new Blob([JSON.stringify(project, null, 2)], { type: "application/json" }),
+        "PerfectSiteCreator-adorno.json",
+      );
+      notify("Adorno salvo em Meus projetos e exportado em JSON.");
+      return;
+    }
     setProjects((p) => [...p, { id: Date.now(), config: { ...config } }]);
     downloadBlob(
       new Blob([JSON.stringify(config, null, 2)], { type: "application/json" }),
@@ -175,33 +212,42 @@ export default function StudioApp({ page = "studio" }: { page?: StudioPage }) {
   };
   const exportModel = async (format: "stl" | "glb") => {
     setBusy(true);
+    let model: ReturnType<typeof buildModel> | null = null;
     try {
-      const model = buildModel(config);
-      try {
-        if (format === "stl") {
-          const { STLExporter } = await import("three/examples/jsm/exporters/STLExporter.js");
-          const data = new STLExporter().parse(model, { binary: true });
+      model = editorMode === "ornament" ? buildOrnament(ornamentConfig) : buildModel(config);
+      if (format === "stl") {
+        const { STLExporter } = await import("three/examples/jsm/exporters/STLExporter.js");
+        const data = new STLExporter().parse(model, { binary: true });
+        downloadBlob(
+          new Blob([new Uint8Array(data.buffer)], { type: "application/sla" }),
+          editorMode === "ornament" ? "PerfectSiteCreator-adorno-montado.stl" : "ExpressArte-medalha.stl",
+        );
+        notify(
+          editorMode === "ornament"
+            ? "STL do conjunto exportado. STL não preserva as cores; confira a montagem no Bambu Studio."
+            : "Modelo exportado. Revise a geometria no fatiador antes de imprimir.",
+        );
+      } else {
+        const { GLTFExporter } = await import("three/examples/jsm/exporters/GLTFExporter.js");
+        const result = await new GLTFExporter().parseAsync(model, { binary: true });
+        if (result instanceof ArrayBuffer) {
           downloadBlob(
-            new Blob([new Uint8Array(data.buffer)], { type: "application/sla" }),
-            "ExpressArte-medalha.stl",
+            new Blob([result], { type: "model/gltf-binary" }),
+            editorMode === "ornament" ? "PerfectSiteCreator-adorno-colorido.glb" : "ExpressArte-medalha.glb",
           );
+          notify("Modelo GLB exportado com as cores e os componentes separados.");
         } else {
-          const { GLTFExporter } = await import("three/examples/jsm/exporters/GLTFExporter.js");
-          const result = await new GLTFExporter().parseAsync(model, { binary: true });
-          if (result instanceof ArrayBuffer)
-            downloadBlob(
-              new Blob([result], { type: "model/gltf-binary" }),
-              "ExpressArte-medalha.glb",
-            );
+          throw new Error("O exportador não retornou um arquivo GLB.");
         }
-        notify("Modelo exportado. Revise no fatiador antes de imprimir.");
-        setDialog(null);
-      } finally {
-        disposeModel(model);
       }
-    } catch {
-      notify("Não foi possível exportar o modelo. Tente novamente.");
+      setDialog(null);
+    } catch (error) {
+      notify(error instanceof Error ? `Não foi possível exportar: ${error.message}` : "Não foi possível exportar o modelo.");
     } finally {
+      if (model) {
+        if (editorMode === "ornament") disposeOrnament(model);
+        else disposeModel(model);
+      }
       setBusy(false);
     }
   };
@@ -339,6 +385,8 @@ export default function StudioApp({ page = "studio" }: { page?: StudioPage }) {
                 variant="outline"
                 onClick={() => {
                   setConfig({ ...defaultConfig });
+                  setEditorMode("medalha");
+                  setOrnamentConfig(defaultOrnamentConfig);
                   setZoom(100);
                   setReset((r) => r + 1);
                   notify("Novo projeto criado.");
@@ -367,10 +415,32 @@ export default function StudioApp({ page = "studio" }: { page?: StudioPage }) {
             <div className="workspace" ref={workspaceRef}>
               <aside className="library-panel">
                 <div className="panel-heading">
-                  <span>Biblioteca de formas</span>
-                  <span className="count">15 formas</span>
+                  <span>{editorMode === "ornament" ? "Padrões perfurados" : "Biblioteca de formas"}</span>
+                  <span className="count">{editorMode === "ornament" ? "5 padrões" : "15 formas"}</span>
                 </div>
-                {library}
+                {editorMode === "ornament" ? (
+                  <div className="ornament-pattern-grid">
+                    {([
+                      ["honeycomb", "Colmeia", "Hexágonos interligados"],
+                      ["diamond", "Losango", "Aberturas em diamante"],
+                      ["round", "Redondo", "Furos circulares"],
+                      ["square", "Quadrado", "Aberturas quadradas"],
+                      ["triangle", "Triângulos", "Aberturas triangulares"],
+                    ] as [LatticePattern, string, string][]).map(([pattern, label, description]) => (
+                      <Button
+                        key={pattern}
+                        type="button"
+                        variant="outline"
+                        className={`ornament-pattern-card ${ornamentConfig.pattern === pattern ? "selected" : ""}`}
+                        aria-pressed={ornamentConfig.pattern === pattern}
+                        onClick={() => updateOrnament("pattern", pattern)}
+                      >
+                        <strong>{label}</strong>
+                        <span>{description}</span>
+                      </Button>
+                    ))}
+                  </div>
+                ) : library}
                 <div className="library-footer">
                   <Layers size={12} />
                   Feitas para dar vida às suas ideias
@@ -385,6 +455,7 @@ export default function StudioApp({ page = "studio" }: { page?: StudioPage }) {
                       zoom={zoom}
                       reset={reset}
                       wireframe={wireframe}
+                      buildObject={editorMode === "ornament" ? buildOrnamentPreview : undefined}
                     />
                   </Suspense>
                 </ClientOnly>
@@ -448,8 +519,15 @@ export default function StudioApp({ page = "studio" }: { page?: StudioPage }) {
                 </div>
                 <div className="model-badge">
                   <span className="status-dot" />
-                  {shapes.find((s) => s.kind === config.shape)?.name} · {config.diameter} ×{" "}
-                  {config.thickness} mm
+                  {editorMode === "ornament"
+                    ? `Adorno perfurado · ${ornamentConfig.diameter} mm · ${({
+                      honeycomb: "Colmeia",
+                      diamond: "Losango",
+                      round: "Redondo",
+                      square: "Quadrado",
+                      triangle: "Triângulos",
+                    } as Record<LatticePattern, string>)[ornamentConfig.pattern]}`
+                    : `${shapes.find((s) => s.kind === config.shape)?.name} · ${config.diameter} × ${config.thickness} mm`}
                 </div>
                 <div className="orientation">
                   <span className="axis-z">Z</span>
@@ -488,101 +566,260 @@ export default function StudioApp({ page = "studio" }: { page?: StudioPage }) {
                   <SlidersHorizontal size={15} />
                 </div>
                 <div className="property-section">
-                  <div className="section-label">
-                    <Type />
-                    Texto em relevo
-                  </div>
-                  <label className="field-label" htmlFor="model-text">
-                    Texto da medalha
-                  </label>
-                  <input
-                    id="model-text"
-                    className="text-input"
-                    maxLength={22}
-                    value={config.name}
-                    onChange={(e) => update("name", e.target.value)}
-                  />
-                  <div className="field-note">
-                    <span>Até 22 caracteres</span>
-                    <span>{config.name.length}/22</span>
+                  <div className="section-label"><Layers /> Modo de criação</div>
+                  <div className="editor-mode-switch">
+                    <Button
+                      type="button"
+                      variant={editorMode === "medalha" ? "default" : "outline"}
+                      aria-pressed={editorMode === "medalha"}
+                      onClick={() => setEditorMode("medalha")}
+                    >
+                      Medalha
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={editorMode === "ornament" ? "default" : "outline"}
+                      aria-pressed={editorMode === "ornament"}
+                      onClick={() => setEditorMode("ornament")}
+                    >
+                      Painel perfurado (legado)
+                    </Button>
                   </div>
                 </div>
-                <div className="property-section">
-                  <div className="section-label">
-                    <Settings2 />
-                    Dimensões
-                  </div>
-                  <RangeField
-                    label="Diâmetro"
-                    value={config.diameter}
-                    min={35}
-                    max={180}
-                    onChange={(v) => update("diameter", v)}
-                  />
-                  <RangeField
-                    label="Espessura da base"
-                    value={config.thickness}
-                    min={2}
-                    max={12}
-                    step={0.5}
-                    onChange={(v) =>
-                      setConfig((c) => ({
-                        ...c,
-                        thickness: v,
-                        textHeight: Math.min(c.textHeight, v * 1.5),
-                      }))
-                    }
-                  />
-                  <RangeField
-                    label="Altura do relevo"
-                    value={config.textHeight}
-                    min={0.4}
-                    max={Math.min(5, config.thickness * 1.5)}
-                    step={0.1}
-                    onChange={(v) => update("textHeight", v)}
-                  />
-                </div>
-                <div className="property-section">
-                  <div className="section-label">
-                    <Palette />
-                    Material e cor
-                  </div>
-                  <div className="swatches">
-                    {materials.map((m) => (
-                      <Button
-                        key={m.id}
-                        variant="ghost"
-                        aria-label={m.name}
-                        title={m.name}
-                        className={`swatch swatch-${m.id} ${config.material === m.id ? "selected" : ""}`}
-                        onClick={() => update("material", m.id)}
+                {editorMode === "ornament" ? (
+                  <>
+                    <div className="property-section">
+                      <div className="section-label"><Settings2 /> Dimensões e malha</div>
+                      <RangeField
+                        label="Diâmetro externo"
+                        value={ornamentConfig.diameter}
+                        min={40}
+                        max={180}
+                        onChange={(value) => updateOrnament("diameter", value)}
                       />
-                    ))}
-                  </div>
-                  <p className="material-name">
-                    {materials.find((m) => m.id === config.material)?.name}
-                  </p>
-                </div>
-                <div className="property-section">
-                  <div className="section-label">
-                    <Layers />
-                    Acabamento
-                  </div>
-                  <Toggle
-                    label="Argola de fixação"
-                    checked={config.ring}
-                    onChange={() => update("ring", !config.ring)}
-                  />
-                  <Toggle
-                    label="Borda decorativa"
-                    checked={config.border}
-                    onChange={() => update("border", !config.border)}
-                  />
-                </div>
-                <div className="ready">
-                  <Check />
-                  Modelo pronto para exportar
-                </div>
+                      <RangeField
+                        label="Espessura do painel"
+                        value={ornamentConfig.panelThickness}
+                        min={0.8}
+                        max={4}
+                        step={0.1}
+                        onChange={(value) => updateOrnament("panelThickness", value)}
+                      />
+                      <RangeField
+                        label="Largura do aro"
+                        value={ornamentConfig.rimWidth}
+                        min={2}
+                        max={Math.min(12, ornamentConfig.diameter / 5)}
+                        step={0.2}
+                        onChange={(value) => updateOrnament("rimWidth", value)}
+                      />
+                      <label className="field-label" htmlFor="ornament-pattern">Padrão de perfuração</label>
+                      <select
+                        id="ornament-pattern"
+                        className="text-input ornament-select"
+                        value={ornamentConfig.pattern}
+                        onChange={(event) => updateOrnament("pattern", event.target.value as LatticePattern)}
+                      >
+                        <option value="honeycomb">Colmeia</option>
+                        <option value="diamond">Losango</option>
+                        <option value="round">Redondo</option>
+                        <option value="square">Quadrado</option>
+                        <option value="triangle">Triângulos</option>
+                      </select>
+                      <RangeField
+                        label="Tamanho das aberturas"
+                        value={ornamentConfig.cellSize}
+                        min={3}
+                        max={18}
+                        step={0.5}
+                        onChange={(value) => updateOrnament("cellSize", value)}
+                      />
+                      <RangeField
+                        label="Espessura das nervuras"
+                        value={ornamentConfig.webWidth}
+                        min={0.6}
+                        max={Math.min(3, ornamentConfig.cellSize / 2)}
+                        step={0.1}
+                        onChange={(value) => updateOrnament("webWidth", value)}
+                      />
+                    </div>
+                    <div className="property-section">
+                      <div className="section-label"><Layers /> Encaixes e montagem</div>
+                      <RangeField
+                        label="Diâmetro dos pinos"
+                        value={ornamentConfig.connectorDiameter}
+                        min={1.5}
+                        max={Math.max(1.5, ornamentConfig.rimWidth - 0.4 - 2 * ornamentConfig.connectorClearance)}
+                        step={0.1}
+                        onChange={(value) => updateOrnament("connectorDiameter", value)}
+                      />
+                      <RangeField
+                        label="Folga dos encaixes"
+                        value={ornamentConfig.connectorClearance}
+                        min={0.1}
+                        max={Math.min(0.6, Math.max(0.1, (ornamentConfig.rimWidth - 1.9) / 2))}
+                        step={0.05}
+                        onChange={(value) => updateOrnament("connectorClearance", value)}
+                      />
+                      <RangeField
+                        label="Altura dos pinos"
+                        value={ornamentConfig.connectorHeight}
+                        min={1}
+                        max={5}
+                        step={0.1}
+                        onChange={(value) => updateOrnament("connectorHeight", value)}
+                      />
+                      <Toggle
+                        label="Argola para pendurar"
+                        checked={ornamentConfig.includeLoop}
+                        onChange={() => updateOrnament("includeLoop", !ornamentConfig.includeLoop)}
+                      />
+                      {ornamentConfig.includeLoop && (
+                        <RangeField
+                          label="Diâmetro da argola"
+                          value={ornamentConfig.loopDiameter}
+                          min={3}
+                          max={12}
+                          step={0.5}
+                          onChange={(value) => updateOrnament("loopDiameter", value)}
+                        />
+                      )}
+                    </div>
+                    <div className="property-section">
+                      <div className="section-label"><Palette /> Cores por componente</div>
+                      <label className="ornament-color-field">
+                        <span>Painel perfurado</span>
+                        <input
+                          aria-label="Cor do painel perfurado"
+                          type="color"
+                          value={ornamentConfig.meshColor}
+                          onChange={(event) => updateOrnament("meshColor", event.target.value)}
+                        />
+                      </label>
+                      <label className="ornament-color-field">
+                        <span>Aros e argola</span>
+                        <input
+                          aria-label="Cor dos aros e da argola"
+                          type="color"
+                          value={ornamentConfig.designColor}
+                          onChange={(event) => updateOrnament("designColor", event.target.value)}
+                        />
+                      </label>
+                      <label className="ornament-color-field">
+                        <span>Pinos de pressão</span>
+                        <input
+                          aria-label="Cor dos pinos"
+                          type="color"
+                          value={ornamentConfig.pressColor}
+                          onChange={(event) => updateOrnament("pressColor", event.target.value)}
+                        />
+                      </label>
+                    </div>
+                    <div className="ready">
+                      <Check />
+                      Prévia paramétrica atualizada. Valide encaixes e fatiamento antes de fabricar.
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="property-section">
+                      <div className="section-label">
+                        <Type />
+                        Texto em relevo
+                      </div>
+                      <label className="field-label" htmlFor="model-text">
+                        Texto da medalha
+                      </label>
+                      <input
+                        id="model-text"
+                        className="text-input"
+                        maxLength={22}
+                        value={config.name}
+                        onChange={(e) => update("name", e.target.value)}
+                      />
+                      <div className="field-note">
+                        <span>Até 22 caracteres</span>
+                        <span>{config.name.length}/22</span>
+                      </div>
+                    </div>
+                    <div className="property-section">
+                      <div className="section-label">
+                        <Settings2 />
+                        Dimensões
+                      </div>
+                      <RangeField
+                        label="Diâmetro"
+                        value={config.diameter}
+                        min={35}
+                        max={180}
+                        onChange={(v) => update("diameter", v)}
+                      />
+                      <RangeField
+                        label="Espessura da base"
+                        value={config.thickness}
+                        min={2}
+                        max={12}
+                        step={0.5}
+                        onChange={(v) =>
+                          setConfig((c) => ({
+                            ...c,
+                            thickness: v,
+                            textHeight: Math.min(c.textHeight, v * 1.5),
+                          }))
+                        }
+                      />
+                      <RangeField
+                        label="Altura do relevo"
+                        value={config.textHeight}
+                        min={0.4}
+                        max={Math.min(5, config.thickness * 1.5)}
+                        step={0.1}
+                        onChange={(v) => update("textHeight", v)}
+                      />
+                    </div>
+                    <div className="property-section">
+                      <div className="section-label">
+                        <Palette />
+                        Material e cor
+                      </div>
+                      <div className="swatches">
+                        {materials.map((m) => (
+                          <Button
+                            key={m.id}
+                            variant="ghost"
+                            aria-label={m.name}
+                            title={m.name}
+                            className={`swatch swatch-${m.id} ${config.material === m.id ? "selected" : ""}`}
+                            onClick={() => update("material", m.id)}
+                          />
+                        ))}
+                      </div>
+                      <p className="material-name">
+                        {materials.find((m) => m.id === config.material)?.name}
+                      </p>
+                    </div>
+                    <div className="property-section">
+                      <div className="section-label">
+                        <Layers />
+                        Acabamento
+                      </div>
+                      <Toggle
+                        label="Argola de fixação"
+                        checked={config.ring}
+                        onChange={() => update("ring", !config.ring)}
+                      />
+                      <Toggle
+                        label="Borda decorativa"
+                        checked={config.border}
+                        onChange={() => update("border", !config.border)}
+                      />
+                    </div>
+                    <div className="ready">
+                      <Check />
+                      Modelo pronto para exportar
+                    </div>
+                  </>
+                )}
               </aside>
             </div>
             <div className="quick-strip">
@@ -657,7 +894,43 @@ export default function StudioApp({ page = "studio" }: { page?: StudioPage }) {
                   const file = e.target.files?.[0];
                   if (!file) return;
                   try {
-                    const data = JSON.parse(await file.text());
+                    const parsed: unknown = JSON.parse(await file.text());
+                    if (
+                      parsed &&
+                      typeof parsed === "object" &&
+                      "type" in parsed &&
+                      parsed.type === "press-ornament" &&
+                      "config" in parsed
+                    ) {
+                      const pressConfig = validatePressOrnamentConfig(
+                        parsed.config as Partial<PressOrnamentConfig>,
+                      );
+                      setProjects((p) => [
+                        ...p,
+                        { id: Date.now(), kind: "press-ornament", pressConfig },
+                      ]);
+                      setPressOrnament(pressConfig);
+                      notify("Projeto de adorno de prensagem importado.");
+                      return;
+                    }
+                    if (
+                      parsed &&
+                      typeof parsed === "object" &&
+                      "type" in parsed &&
+                      parsed.type === "perforated-ornament" &&
+                      "config" in parsed
+                    ) {
+                      const importedOrnament = validateOrnamentConfig(
+                        parsed.config as Partial<OrnamentConfig>,
+                      );
+                      setProjects((p) => [
+                        ...p,
+                        { id: Date.now(), kind: "ornament", ornamentConfig: importedOrnament },
+                      ]);
+                      notify("Configuração de adorno importada.");
+                      return;
+                    }
+                    const data = parsed as ModelConfig;
                     if (
                       !shapes.some((s) => s.kind === data.shape) ||
                       typeof data.name !== "string" ||
@@ -676,7 +949,7 @@ export default function StudioApp({ page = "studio" }: { page?: StudioPage }) {
                       typeof data.border !== "boolean"
                     )
                       throw new Error();
-                    setProjects((p) => [...p, { id: Date.now(), config: data }]);
+                    setProjects((p) => [...p, { id: Date.now(), kind: "medalha", config: data }]);
                     notify("Projeto importado.");
                   } catch {
                     notify("Este arquivo não contém um projeto ExpressArte válido.");
@@ -704,14 +977,32 @@ export default function StudioApp({ page = "studio" }: { page?: StudioPage }) {
               projects.map((p) => (
                 <div className="project-row" key={p.id}>
                   <div>
-                    <h3>{p.config.name}</h3>
+                    <h3>{p.kind === "ornament" ? "Adorno perfurado (legado)" : p.kind === "press-ornament" ? "Adorno de prensagem" : p.config.name}</h3>
                     <p>
-                      {p.config.diameter} mm · {shapes.find((s) => s.kind === p.config.shape)?.name}
+                      {p.kind === "ornament"
+                        ? `${p.ornamentConfig.diameter} mm · ${p.ornamentConfig.pattern} · ${p.ornamentConfig.cellSize} mm de célula`
+                        : p.kind === "press-ornament"
+                          ? `${p.pressConfig.diameter} mm · ${p.pressConfig.form} · ${p.pressConfig.pattern} · duas metades`
+                          : `${p.config.diameter} mm · ${shapes.find((s) => s.kind === p.config.shape)?.name}`}
                     </p>
                   </div>
                   <div className="flex gap-2">
-                    <Button asChild variant="outline" onClick={() => setConfig(p.config)}>
-                      <Link to="/">Abrir</Link>
+                    <Button
+                      asChild
+                      variant="outline"
+                      onClick={() => {
+                        if (p.kind === "ornament") {
+                          setOrnamentConfig({ ...p.ornamentConfig });
+                          setEditorMode("ornament");
+                        } else if (p.kind === "press-ornament") {
+                          setPressOrnament({ ...p.pressConfig });
+                        } else {
+                          setConfig(p.config);
+                          setEditorMode("medalha");
+                        }
+                      }}
+                    >
+                      <Link to={p.kind === "press-ornament" ? "/adornos" : "/"}>Abrir</Link>
                     </Button>
                     <Button
                       variant="ghost"
@@ -888,8 +1179,9 @@ export default function StudioApp({ page = "studio" }: { page?: StudioPage }) {
             {dialog === "export" ? (
               <>
                 <p>
-                  Escolha o formato da sua medalha. Revise a geometria no fatiador antes da
-                  impressão.
+                  {editorMode === "ornament"
+                    ? "Exporte o adorno paramétrico. STL reúne as peças em um único arquivo; GLB preserva as cores e os componentes."
+                    : "Escolha o formato da sua medalha. Revise a geometria no fatiador antes da impressão."}
                 </p>
                 <div className="dialog-actions">
                   <Button variant="outline" disabled={busy} onClick={() => exportModel("glb")}>

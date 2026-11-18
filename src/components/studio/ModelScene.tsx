@@ -19,14 +19,16 @@ export default function ModelScene({
   wireframe,
   buildObject,
   distanceScale = 1,
+  interiorPreview = "none",
 }: {
   config: ModelConfig;
   view: string;
   zoom: number;
   reset: number;
   wireframe: boolean;
-  buildObject?: () => THREE.Object3D;
+  buildObject?: (() => THREE.Object3D) | undefined;
   distanceScale?: number;
+  interiorPreview?: "none" | "half" | "assembled";
 }) {
   const host = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<{
@@ -124,10 +126,15 @@ export default function ModelScene({
       disposeAny(current.model);
     }
     const model = (buildObject ? buildObject() : buildModel(config)) as THREE.Group;
+    // Studio uses Y-up and a horizontal build plate. Custom ornament geometry
+    // is authored in the slicer convention (XY plate, Z height), so orient it
+    // for the viewport without changing the exported source geometry.
+    model.rotation.x = -Math.PI / 2;
     if (!buildObject) {
-      model.rotation.x = -Math.PI / 2;
       model.rotation.z = -0.1;
       model.position.y = 1;
+    } else {
+      model.position.y = 0;
     }
     model.traverse((child) => {
       if (child instanceof THREE.Mesh) {
@@ -145,14 +152,33 @@ export default function ModelScene({
     if (!current) return;
     const { camera, controls } = current;
     const s = distanceScale;
-    controls.maxDistance = 500 * s;
-    if (view === "2d") camera.position.set(0, 240 * s, 1);
-    else camera.position.set(110 * s, 135 * s, 165 * s);
+    if (interiorPreview !== "none" && view !== "2d") {
+      // Inspect the real hollow cavity from inside. The mesh and its holes are
+      // unchanged; only the camera moves into the empty volume.
+      controls.minDistance = 1.5;
+      controls.maxDistance = 180 * s;
+      controls.maxPolarAngle = Math.PI * 0.96;
+      controls.minPolarAngle = 0.04;
+      if (interiorPreview === "half") {
+        camera.position.set(0, 4 * s, 2 * s);
+        controls.target.set(0, 20 * s, 32 * s);
+      } else {
+        camera.position.set(0, 0, 0);
+        controls.target.set(0, 20 * s, 32 * s);
+      }
+    } else {
+      controls.minDistance = 80;
+      controls.maxDistance = 500 * s;
+      controls.maxPolarAngle = Math.PI * 0.49;
+      controls.minPolarAngle = 0;
+      if (view === "2d") camera.position.set(0, 240 * s, 1);
+      else camera.position.set(110 * s, 135 * s, 165 * s);
+      controls.target.set(0, 5, 0);
+    }
     camera.zoom = zoom / 100;
     camera.updateProjectionMatrix();
-    controls.target.set(0, 5, 0);
     controls.update();
-  }, [view, zoom, reset, distanceScale]);
+  }, [view, zoom, reset, distanceScale, interiorPreview]);
   return (
     <div className="scene-container" ref={host} aria-label="Modelo 3D interativo da medalha" />
   );
