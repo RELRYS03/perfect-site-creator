@@ -131,8 +131,8 @@ export function createPerforatedPanel(config: Partial<OrnamentConfig>) {
   geometry.computeVertexNormals();
   geometry.computeBoundingBox();
   geometry.computeBoundingSphere();
-  geometry.userData.pattern = c.pattern;
-  geometry.userData.perforationCount = points.length;
+  geometry.userData["pattern"] = c.pattern;
+  geometry.userData["perforationCount"] = points.length;
   return { geometry, perforationCount: points.length, config: c };
 }
 function makeRim(config: OrnamentConfig, connectorHoles = false) {
