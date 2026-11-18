@@ -231,7 +231,7 @@ export default function OrnamentWorkbench() {
               <>
                 <RangeControl label="Largura do desenho" value={config.designWidth} min={12}
                   max={config.diameter * 0.62} onChange={(value) => update("designWidth", value)} />
-                <RangeControl label="Altura do relevo" value={config.designHeight} min={0.25} max={1.8}
+                <RangeControl label="Altura do relevo" value={config.designHeight} min={0.4} max={1.8}
                   onChange={(value) => update("designHeight", value)} />
               </>
             )}
