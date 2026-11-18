@@ -34,7 +34,7 @@ export const GIGAPRINT_BALL_REFERENCE = {
   plungerApexZ: 43.5,
   blockBounds: [127.58, 147.145, 45] as const,
   guidePostDiameter: 8,
-  guideHoleDiameter: 8.4,
+  guideHoleDiameter: 8.6,
   guidePostHeight: 7,
   locatorPostDiameter: 2.8,
   locatorPostHeight: 2,
@@ -107,9 +107,9 @@ function profileSlope(profile: readonly (readonly [number, number])[], radius: n
   return span > 0 ? (after - before) / span : 0;
 }
 
-function circleHole(cx: number, cy: number, radius: number) {
+function circleHole(cx: number, cy: number, radius: number, clockwise = true) {
   const hole = new THREE.Path();
-  hole.absarc(cx, cy, radius, 0, Math.PI * 2, true);
+  hole.absarc(cx, cy, radius, 0, Math.PI * 2, clockwise);
   return hole;
 }
 
@@ -404,7 +404,7 @@ function createProfileVolume(
 
 function createMoldBlockBase(config: PressOrnamentConfig, topZ: number, scale: number) {
   const shape = roundedTriangleShape(127.58 * scale, 147.145 * scale, 11 * scale, -1.6945 * scale);
-  shape.holes.push(circleHole(0, 0, 50 * scale));
+  shape.holes.push(circleHole(0, 0, 50 * scale, false));
   const geometry = new THREE.ExtrudeGeometry(shape, {
     depth: topZ,
     bevelEnabled: false,
@@ -473,7 +473,7 @@ export function buildReferenceFemaleMold(input: Partial<PressOrnamentConfig> = {
 function createPlungerFlange(config: PressOrnamentConfig, scale: number, plateDepth: number) {
   const shape = roundedTriangleShape(127.364 * scale, 147.144 * scale, 11 * scale, -1.6945 * scale);
   GIGAPRINT_BALL_REFERENCE.guidePostCenters.forEach(([x, y]) => {
-    shape.holes.push(circleHole(x * scale, y * scale, (4 + config.clearance) * scale));
+    shape.holes.push(circleHole(x * scale, y * scale, (4 + config.clearance) * scale, false));
   });
   const geometry = new THREE.ExtrudeGeometry(shape, {
     depth: plateDepth,
