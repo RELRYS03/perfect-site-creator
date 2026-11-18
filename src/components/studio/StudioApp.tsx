@@ -29,6 +29,7 @@ import {
   Save,
   Trash2,
   CircleHelp,
+  Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -41,6 +42,7 @@ import {
   type ModelConfig,
   type ShapeKind,
 } from "@/lib/studio/model";
+import { validatePressOrnamentConfig, type PressOrnamentConfig } from "@/lib/studio/ornament-press";
 import { ShapeIcon } from "./ShapeIcon";
 import { useStudio } from "./StudioProvider";
 import { isSTLFileWithinLimit, MAX_STL_FILE_MB } from "@/lib/studio/uploadLimits";
@@ -53,9 +55,10 @@ import {
   type OrnamentConfig,
 } from "@/lib/studio/ornament";
 const ModelScene = lazy(() => import("./ModelScene"));
-export type StudioPage = "studio" | "formas" | "projetos" | "calculadora" | "mesh" | "comunidade";
+export type StudioPage = "studio" | "adornos" | "formas" | "projetos" | "calculadora" | "mesh" | "comunidade";
 export const nav = [
   { to: "/", label: "Studio 3D", icon: Box, page: "studio" },
+  { to: "/adornos", label: "Adornos", icon: Sparkles, page: "adornos" },
   { to: "/formas", label: "Formas", icon: Shapes, page: "formas" },
   { to: "/organizador", label: "Organizador 3D", icon: Layers, page: "organizador" },
   { to: "/projetos", label: "Meus projetos", icon: FolderOpen, page: "projetos" },
@@ -65,6 +68,7 @@ export const nav = [
 ] as const;
 const titles: Record<StudioPage, [string, string]> = {
   studio: ["Studio 3D", "Sua ideia ganha forma. Crie, personalize e prepare para imprimir."],
+  adornos: ["Adornos de prensagem", "Crie malhas, moldes e enfeites de duas metades."],
   formas: ["Biblioteca de formas", "Escolha o ponto de partida da sua próxima criação."],
   projetos: ["Meus projetos", "Suas criações nesta sessão."],
   calculadora: ["Calculadora de impressão", "Materiais, energia e tempo de produção."],
@@ -134,7 +138,7 @@ function Toggle({
   );
 }
 export default function StudioApp({ page = "studio" }: { page?: StudioPage }) {
-  const { config, setConfig, projects, setProjects } = useStudio();
+  const { config, setConfig, projects, setProjects, setPressOrnament } = useStudio();
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("Todas");
   const [view, setView] = useState("3d");
@@ -895,6 +899,24 @@ export default function StudioApp({ page = "studio" }: { page?: StudioPage }) {
                       parsed &&
                       typeof parsed === "object" &&
                       "type" in parsed &&
+                      parsed.type === "press-ornament" &&
+                      "config" in parsed
+                    ) {
+                      const pressConfig = validatePressOrnamentConfig(
+                        parsed.config as Partial<PressOrnamentConfig>,
+                      );
+                      setProjects((p) => [
+                        ...p,
+                        { id: Date.now(), kind: "press-ornament", pressConfig },
+                      ]);
+                      setPressOrnament(pressConfig);
+                      notify("Projeto de adorno de prensagem importado.");
+                      return;
+                    }
+                    if (
+                      parsed &&
+                      typeof parsed === "object" &&
+                      "type" in parsed &&
                       parsed.type === "perforated-ornament" &&
                       "config" in parsed
                     ) {
@@ -955,11 +977,13 @@ export default function StudioApp({ page = "studio" }: { page?: StudioPage }) {
               projects.map((p) => (
                 <div className="project-row" key={p.id}>
                   <div>
-                    <h3>{p.kind === "ornament" ? "Adorno perfurado" : p.config.name}</h3>
+                    <h3>{p.kind === "ornament" ? "Adorno perfurado (legado)" : p.kind === "press-ornament" ? "Adorno de prensagem" : p.config.name}</h3>
                     <p>
                       {p.kind === "ornament"
                         ? `${p.ornamentConfig.diameter} mm · ${p.ornamentConfig.pattern} · ${p.ornamentConfig.cellSize} mm de célula`
-                        : `${p.config.diameter} mm · ${shapes.find((s) => s.kind === p.config.shape)?.name}`}
+                        : p.kind === "press-ornament"
+                          ? `${p.pressConfig.diameter} mm · ${p.pressConfig.form} · ${p.pressConfig.pattern} · duas metades`
+                          : `${p.config.diameter} mm · ${shapes.find((s) => s.kind === p.config.shape)?.name}`}
                     </p>
                   </div>
                   <div className="flex gap-2">
@@ -970,13 +994,15 @@ export default function StudioApp({ page = "studio" }: { page?: StudioPage }) {
                         if (p.kind === "ornament") {
                           setOrnamentConfig({ ...p.ornamentConfig });
                           setEditorMode("ornament");
+                        } else if (p.kind === "press-ornament") {
+                          setPressOrnament({ ...p.pressConfig });
                         } else {
                           setConfig(p.config);
                           setEditorMode("medalha");
                         }
                       }}
                     >
-                      <Link to="/">Abrir</Link>
+                      <Link to={p.kind === "press-ornament" ? "/adornos" : "/"}>Abrir</Link>
                     </Button>
                     <Button
                       variant="ghost"
