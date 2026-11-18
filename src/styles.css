@@ -1133,3 +1133,73 @@ input[type="range"] {
 .organizer-warning svg { flex: none; width: 1rem; height: 1rem; }
 .organizer-note { font-size: 0.75rem; color: var(--muted-foreground); }
 @media (max-width: 1100px) { .organizer-layout { grid-template-columns: 1fr; } .organizer-viewport { min-height: 420px; } }
+
+
+/* Parametric perforated ornament editor */
+.editor-mode-switch {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 7px;
+}
+.editor-mode-switch button {
+  min-width: 0;
+  height: 34px;
+  padding: 0 8px;
+  font-size: 10px;
+  white-space: normal;
+}
+.ornament-pattern-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+  padding: 12px;
+}
+.ornament-pattern-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 3px;
+  min-height: 58px;
+  padding: 9px 11px;
+  text-align: left;
+  white-space: normal;
+}
+.ornament-pattern-card.selected {
+  border-color: var(--primary);
+  background: var(--secondary);
+}
+.ornament-pattern-card strong {
+  font-size: 11px;
+  color: var(--foreground);
+}
+.ornament-pattern-card span {
+  font-size: 9px;
+  line-height: 1.35;
+  color: var(--muted-foreground);
+}
+.ornament-select {
+  margin-bottom: 16px;
+}
+.ornament-color-field {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 38px;
+  font-size: 11px;
+  color: var(--foreground);
+}
+.ornament-color-field input[type="color"] {
+  width: 44px;
+  height: 28px;
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--background);
+  cursor: pointer;
+}
+@media (max-width: 500px) {
+  .editor-mode-switch button { font-size: 9px; padding: 0 5px; }
+  .ornament-pattern-grid { grid-template-columns: 1fr 1fr; }
+}
