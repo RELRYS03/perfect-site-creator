@@ -106,8 +106,8 @@ async function verify3mf(config: typeof defaultPressOrnamentConfig, expectedTitl
   const settings = parseXml(files.get("Metadata/model_settings.config")!);
   const plates = [...settings.getElementsByTagName("plate")];
   expect(plates).toHaveLength(4);
-  expect(plates.map((plate) => plate.getElementsByTagName("metadata")
-    .namedItem("plater_name")?.getAttribute("value"))).toEqual([
+  expect(plates.map((plate) => [...plate.getElementsByTagName("metadata")]
+    .find((node) => node.getAttribute("key") === "plater_name")?.getAttribute("value"))).toEqual([
       "Plate 1", "Plate 2", "Plate 3", "Plate 4",
     ]);
   for (const plate of plates) {
