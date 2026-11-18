@@ -3,7 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { Download, Save, Box, RotateCcw, Sparkles, Layers, Settings2, Palette, CircleHelp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import ModelScene from "./ModelScene";
-import { defaultConfig } from "@/lib/studio/model";
+import { defaultConfig, downloadBlob } from "@/lib/studio/model";
 import { useStudio } from "./StudioProvider";
 import {
   buildPressOrnament,
@@ -105,12 +105,10 @@ export default function OrnamentWorkbench() {
       type: "press-ornament",
       config,
     };
-    const url = URL.createObjectURL(new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" }));
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = "PerfectSiteCreator-adorno-prensagem.json";
-    anchor.click();
-    URL.revokeObjectURL(url);
+    downloadBlob(
+      new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" }),
+      "PerfectSiteCreator-adorno-prensagem.json",
+    );
     notify("Projeto salvo em Meus projetos e exportado em JSON.");
   };
 
@@ -122,24 +120,19 @@ export default function OrnamentWorkbench() {
       if (format === "stl") {
         const { STLExporter } = await import("three/examples/jsm/exporters/STLExporter.js");
         const data = new STLExporter().parse(model, { binary: true });
-        const blob = new Blob([new Uint8Array(data.buffer)], { type: "application/sla" });
-        const url = URL.createObjectURL(blob);
-        const anchor = document.createElement("a");
-        anchor.href = url;
-        anchor.download = `ExpressArte-${preview}-prensagem.stl`;
-        anchor.click();
-        URL.revokeObjectURL(url);
+        downloadBlob(
+          new Blob([new Uint8Array(data.buffer)], { type: "application/sla" }),
+          `ExpressArte-${preview}-prensagem.stl`,
+        );
         notify("STL exportado. Confira escala, orientação e folgas no Bambu Studio antes de imprimir.");
       } else {
         const { GLTFExporter } = await import("three/examples/jsm/exporters/GLTFExporter.js");
         const result = await new GLTFExporter().parseAsync(model, { binary: true });
         if (!(result instanceof ArrayBuffer)) throw new Error("O exportador não retornou um GLB.");
-        const url = URL.createObjectURL(new Blob([result], { type: "model/gltf-binary" }));
-        const anchor = document.createElement("a");
-        anchor.href = url;
-        anchor.download = `ExpressArte-adorno-prensagem-${preview}.glb`;
-        anchor.click();
-        URL.revokeObjectURL(url);
+        downloadBlob(
+          new Blob([result], { type: "model/gltf-binary" }),
+          `ExpressArte-adorno-prensagem-${preview}.glb`,
+        );
         notify("GLB colorido exportado com os componentes identificados.");
       }
     } catch (error) {
