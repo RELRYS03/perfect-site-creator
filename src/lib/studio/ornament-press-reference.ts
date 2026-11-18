@@ -378,38 +378,125 @@ export function buildReferenceFlatBlank(input: Partial<PressOrnamentConfig> = {}
   return group;
 }
 
-function createProfileVolume(
-  profile: readonly (readonly [number, number])[],
-  bottomZ: number,
-  topRimZ: number,
-) {
-  // Profile coordinates already contain the selected diameter/depth scaling.
-  const outerRadius = profile[profile.length - 1]![0];
-  const points: THREE.Vector2[] = [
-    new THREE.Vector2(0, bottomZ),
-    new THREE.Vector2(outerRadius, bottomZ),
-    new THREE.Vector2(outerRadius, topRimZ),
-  ];
-  for (let index = profile.length - 1; index >= 0; index--) {
-    const [r, z] = profile[index]!;
-    points.push(new THREE.Vector2(r, z));
+function signedArea(points: THREE.Vector2[]) {
+  let area = 0;
+  for (let index = 0; index < points.length; index++) {
+    const current = points[index]!;
+    const next = points[(index + 1) % points.length]!;
+    area += current.x * next.y - next.x * current.y;
   }
-  points.push(new THREE.Vector2(0, bottomZ));
-  const geometry = new THREE.LatheGeometry(points, 96);
-  geometry.rotateX(Math.PI / 2);
-  geometry.computeVertexNormals();
-  geometry.computeBoundingBox();
-  return geometry;
+  return area / 2;
+}
+
+function cleanContour(points: THREE.Vector2[]) {
+  const cleaned = points.slice();
+  if (cleaned.length > 2 && cleaned[0]!.distanceTo(cleaned[cleaned.length - 1]!) < 1e-6) {
+    cleaned.pop();
+  }
+  return cleaned;
 }
 
 function createMoldBlockBase(config: PressOrnamentConfig, topZ: number, scale: number) {
-  const shape = roundedTriangleShape(127.58 * scale, 147.145 * scale, 11 * scale, -1.6945 * scale);
-  shape.holes.push(circleHole(0, 0, 50 * scale, false));
-  const geometry = new THREE.ExtrudeGeometry(shape, {
-    depth: topZ,
-    bevelEnabled: false,
-    curveSegments: 96,
-  });
+  const shape = roundedTriangleShape(
+    127.58 * scale,
+    147.145 * scale,
+    11 * scale,
+    -1.6945 * scale,
+  );
+  const extracted = shape.extractPoints(96);
+  let outer = cleanContour(extracted.shape);
+  let hole = cleanContour(circleHole(0, 0, 50 * scale, false).getPoints(96));
+  if (signedArea(outer) < 0) outer = outer.reverse();
+  if (signedArea(hole) > 0) hole = hole.reverse();
+
+  const topFaces = THREE.ShapeUtils.triangulateShape(outer, [hole]);
+  const bottomFaces = THREE.ShapeUtils.triangulateShape(outer, []);
+  const positions: number[] = [];
+  const faces: number[] = [];
+  const topOuterStart = 0;
+  const topHoleStart = outer.length;
+
+  for (const point of outer) positions.push(point.x, point.y, topZ);
+  for (const point of hole) positions.push(point.x, point.y, topZ);
+
+  for (const face of topFaces) {
+    faces.push(face[0]!, face[1]!, face[2]!);
+  }
+
+  const bottomStart = positions.length / 3;
+  for (const point of outer) positions.push(point.x, point.y, 0);
+  for (const face of bottomFaces) {
+    faces.push(
+      bottomStart + face[0]!,
+      bottomStart + face[2]!,
+      bottomStart + face[1]!,
+    );
+  }
+
+  // Outer triangular walls connect the top flange to the solid bottom.
+  for (let index = 0; index < outer.length; index++) {
+    const next = (index + 1) % outer.length;
+    const topA = topOuterStart + index;
+    const topB = topOuterStart + next;
+    const bottomA = bottomStart + index;
+    const bottomB = bottomStart + next;
+    faces.push(bottomA, bottomB, topB, bottomA, topB, topA);
+  }
+
+  // The bowl is built into the block shell. The final profile ring reuses
+  // the top-face hole vertices, so no open circular seam remains.
+  const angles = hole.map((point) => Math.atan2(point.y, point.x));
+  const profile = CAVITY_PROFILE.map(([radius, z]) => [
+    radius * scale,
+    z * (config.pressDepth / 32.5),
+  ] as const);
+  profile.push([50 * scale, topZ]);
+
+  let previousRing: number[] = [];
+  for (let profileIndex = 0; profileIndex < profile.length; profileIndex++) {
+    const [radius, z] = profile[profileIndex]!;
+    let currentRing: number[];
+    if (profileIndex === profile.length - 1) {
+      currentRing = angles.map((_, index) => topHoleStart + index);
+    } else if (radius < 1e-8) {
+      const centerIndex = positions.length / 3;
+      positions.push(0, 0, z);
+      currentRing = [centerIndex];
+    } else {
+      currentRing = angles.map((angle) => {
+        const vertexIndex = positions.length / 3;
+        positions.push(radius * Math.cos(angle), radius * Math.sin(angle), z);
+        return vertexIndex;
+      });
+    }
+
+    if (previousRing.length === 1 && currentRing.length > 1) {
+      const center = previousRing[0]!;
+      for (let index = 0; index < currentRing.length; index++) {
+        const next = (index + 1) % currentRing.length;
+        faces.push(center, currentRing[next]!, currentRing[index]!);
+      }
+    } else if (previousRing.length > 1 && currentRing.length > 1) {
+      for (let index = 0; index < currentRing.length; index++) {
+        const next = (index + 1) % currentRing.length;
+        const a = previousRing[index]!;
+        const b = previousRing[next]!;
+        const c = currentRing[next]!;
+        const d = currentRing[index]!;
+        faces.push(a, b, c, a, c, d);
+      }
+    }
+    previousRing = currentRing;
+  }
+
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setIndex(faces);
+  geometry.computeVertexNormals();
+  geometry.computeBoundingBox();
+  geometry.computeBoundingSphere();
+  geometry.userData["cavitySurfaceIntegrated"] = true;
+  geometry.userData["sourceCavityProfile"] = CAVITY_PROFILE;
   const base = new THREE.Mesh(geometry, makeMaterial(config.pressColor, 0.74));
   base.name = "female-cavity-block-body";
   base.castShadow = true;
@@ -426,15 +513,6 @@ export function buildReferenceFemaleMold(input: Partial<PressOrnamentConfig> = {
   group.name = "gigaprint-female-cavity-mold";
 
   group.add(createMoldBlockBase(config, topZ, scale));
-
-  const cavityProfile = CAVITY_PROFILE.map(([r, z]) => [r * scale, z * depthScale] as const);
-  // The input profile is already scaled into model millimetres.
-  const bowlGeometry = createProfileVolume(cavityProfile, 0, topZ);
-  const bowl = new THREE.Mesh(bowlGeometry, makeMaterial(config.pressColor, 0.66));
-  bowl.name = "female-concave-forming-surface";
-  bowl.castShadow = true;
-  bowl.receiveShadow = true;
-  group.add(bowl);
 
   GIGAPRINT_BALL_REFERENCE.locatorPinCenters.forEach(([x, y], index) => {
     addCylinderAt(
@@ -464,7 +542,8 @@ export function buildReferenceFemaleMold(input: Partial<PressOrnamentConfig> = {
 
   group.userData["component"] = "female-cavity-block";
   group.userData["topPlaneZ"] = topZ;
-  group.userData["cavityProfile"] = cavityProfile;
+  group.userData["cavityProfile"] = CAVITY_PROFILE.map(([r, z]) => [r * scale, z * depthScale]);
+  group.userData["cavitySurfaceIntegrated"] = true;
   group.userData["guidePostDiameterMm"] = 8 * scale;
   group.userData["locatorPinDiameterMm"] = 2.8 * scale;
   return group;
