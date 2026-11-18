@@ -206,14 +206,15 @@ function createLatticeShape(config: PressOrnamentConfig) {
         : config.pattern === "triangle"
           ? 3
           : 4;
-    const rotation =
-      config.pattern === "diamond"
-        ? Math.PI / 4
-        : config.pattern === "triangle"
-          ? -Math.PI / 2
-          : 0;
-    const factor = config.pattern === "square" ? 0.9 : 1;
-    addPolygonHole(shape, regularPolygon(x, y, holeRadius * factor, sides, rotation));
+    // Keep all hole contours axis-aligned for ShapeUtils triangulation. A
+    // diagonal pattern is applied to the finished extrusion, not each hole.
+    const factor =
+      config.pattern === "square"
+        ? 0.9
+        : config.pattern === "diamond"
+          ? 1 / Math.SQRT2
+          : 1;
+    addPolygonHole(shape, regularPolygon(x, y, holeRadius * factor, sides, 0));
   }
   return { shape, perforationCount: points.length, baseRadius };
 }
@@ -263,6 +264,8 @@ export function createPressDome(configInput: Partial<PressOrnamentConfig>, sign:
     curveSegments: 24,
     steps: 1,
   });
+  if (config.pattern === "diamond") geometry.rotateZ(Math.PI / 4);
+  if (config.pattern === "triangle") geometry.rotateZ(-Math.PI / 2);
   warpToDome(geometry, config, sign, baseRadius);
   geometry.userData["perforationCount"] = perforationCount;
   geometry.userData["pattern"] = config.pattern;
