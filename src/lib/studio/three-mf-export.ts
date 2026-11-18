@@ -141,8 +141,8 @@ function collectPartMesh(group: THREE.Group, partName: string): MeshData {
   for (let index = 0; index < vertices.length; index += 3) {
     for (let axis = 0; axis < 3; axis++) {
       const value = vertices[index + axis]!;
-      bounds.min[axis] = Math.min(bounds.min[axis], value);
-      bounds.max[axis] = Math.max(bounds.max[axis], value);
+      bounds.min[axis] = Math.min(bounds.min[axis]!, value);
+      bounds.max[axis] = Math.max(bounds.max[axis]!, value);
     }
   }
 
