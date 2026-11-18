@@ -368,7 +368,7 @@ function makePartDefinitions(config: PressOrnamentConfig): PartDefinition[] {
   ];
 }
 
-export async function createBallOrnament3MF(config: PressOrnamentConfig, title = "Ball ornament") {
+export function createBallOrnament3MF(config: PressOrnamentConfig, title = "Ball ornament"): Uint8Array {
   const definitions = makePartDefinitions(config);
   try {
     const parts = definitions.map((definition) => ({
@@ -391,7 +391,7 @@ export async function createBallOrnament3MF(config: PressOrnamentConfig, title =
     if (zip.byteLength > MAX_3MF_BYTES) {
       throw new Error("O arquivo 3MF ultrapassou 28 MB. Reduza a resolução da malha ou o tamanho.");
     }
-    return new Blob([zip], { type: "application/vnd.ms-package.3dmanufacturing-3dmodel+zip" });
+    return zip;
   } finally {
     definitions.forEach(({ group }) => disposeReferenceOrnament(group));
   }
