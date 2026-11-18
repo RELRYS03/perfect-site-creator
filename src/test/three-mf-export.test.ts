@@ -53,7 +53,7 @@ function parseXml(xml: string) {
 async function verify3mf(config: typeof defaultPressOrnamentConfig, expectedTitle = "Ball ornament") {
   const blob = await createBallOrnament3MF(config, expectedTitle);
   const { files, size } = await readStoredZip(blob);
-  expect(blob.type).toBe("model/3mf");
+  expect(blob.type).toBe("application/vnd.ms-package.3dmanufacturing-3dmodel+zip");
   expect(size).toBeLessThan(28 * 1024 * 1024);
 
   for (const required of [
