@@ -50,12 +50,21 @@ function assertWatertightChildMesh(
     return [tx, ty, tz].map((value) => Math.round(value * 1000)).join(",");
   };
   const edgeUses = new Map<string, number>();
+  let signedVolume = 0;
+  const aPoint = new THREE.Vector3();
+  const bPoint = new THREE.Vector3();
+  const cPoint = new THREE.Vector3();
   for (let offset = 0; offset < count; offset += 3) {
     const ids = [
       index ? index.getX(offset) : offset,
       index ? index.getX(offset + 1) : offset + 1,
       index ? index.getX(offset + 2) : offset + 2,
     ];
+    aPoint.fromBufferAttribute(position, ids[0]!).applyMatrix4(matrix);
+    bPoint.fromBufferAttribute(position, ids[1]!).applyMatrix4(matrix);
+    cPoint.fromBufferAttribute(position, ids[2]!).applyMatrix4(matrix);
+    if (matrix.determinant() < 0) [bPoint, cPoint] = [cPoint, bPoint];
+    signedVolume += aPoint.dot(bPoint.clone().cross(cPoint)) / 6;
     const keys = ids.map(keyAt);
     for (let edge = 0; edge < 3; edge++) {
       const a = keys[edge]!;
@@ -71,6 +80,12 @@ function assertWatertightChildMesh(
       partName + " / " + mesh.name + ": malha não-manifold (" +
       badEdges + " arestas abertas ou compartilhadas incorretamente). " +
       "Amostra: " + bad.slice(0, 8).map(([edge, uses]) => edge + " [" + uses + "]").join("; "),
+    );
+  }
+  if (signedVolume <= 0) {
+    throw new Error(
+      partName + " / " + mesh.name + ": orientação de faces inválida (volume assinado " +
+      signedVolume.toFixed(3) + " mm³).",
     );
   }
 }
