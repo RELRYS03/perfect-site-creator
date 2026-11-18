@@ -7,8 +7,23 @@ import {
 
 const MODEL_NS = "http://schemas.microsoft.com/3dmanufacturing/core/2015/02";
 
+async function blobToBytes(blob: Blob) {
+  return await new Promise<Uint8Array>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (!(reader.result instanceof ArrayBuffer)) {
+        reject(new Error("O FileReader não retornou um ArrayBuffer."));
+        return;
+      }
+      resolve(new Uint8Array(reader.result));
+    };
+    reader.onerror = () => reject(reader.error ?? new Error("Falha ao ler o 3MF."));
+    reader.readAsArrayBuffer(blob);
+  });
+}
+
 async function readStoredZip(blob: Blob) {
-  const bytes = new Uint8Array(await blob.arrayBuffer());
+  const bytes = await blobToBytes(blob);
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   const decoder = new TextDecoder();
   const files = new Map<string, string>();
