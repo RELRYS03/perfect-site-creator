@@ -115,9 +115,9 @@ export function createPerforatedPanel(config: Partial<OrnamentConfig>) {
       shape.holes.push(hole);
     } else {
       const sides = c.pattern === "square" || c.pattern === "diamond" ? 4 : c.pattern === "triangle" ? 3 : 6;
-      const radius = holeRadius;
-      const rotation = c.pattern === "diamond" ? Math.PI / 4 : c.pattern === "triangle" ? -Math.PI / 2 : 0;
-      addHole(shape, polygonPoints(x, y, radius, sides, rotation));
+      // Keep polygon paths axis-aligned during triangulation. Rotate the
+      // completed, watertight geometry below for diamond/triangle variants.
+      addHole(shape, polygonPoints(x, y, holeRadius, sides, 0));
     }
   }
   const geometry = new THREE.ExtrudeGeometry(shape, {
@@ -126,6 +126,8 @@ export function createPerforatedPanel(config: Partial<OrnamentConfig>) {
     curveSegments: 20,
     steps: 1,
   });
+  if (c.pattern === "diamond") geometry.rotateZ(Math.PI / 4);
+  if (c.pattern === "triangle") geometry.rotateZ(-Math.PI / 2);
   geometry.computeVertexNormals();
   geometry.computeBoundingBox();
   geometry.computeBoundingSphere();
