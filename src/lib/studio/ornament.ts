@@ -93,16 +93,16 @@ export function createPerforatedPanel(config: Partial<OrnamentConfig>) {
   const shape = new THREE.Shape();
   shape.absarc(0, 0, innerRadius, 0, Math.PI * 2, false);
   const holeRadius = Math.max(0.5, (c.cellSize - c.webWidth) / 2);
-  const shapeFactor = c.pattern === "diamond" ? 1.18 : c.pattern === "square" ? Math.SQRT2 : 1;
+  const shapeFactor = c.pattern === "square" ? Math.SQRT2 : 1;
   const margin = holeRadius * shapeFactor + c.webWidth * 0.55;
   const points: Point[] = [];
-  const rowStep = c.cellSize * (c.pattern === "honeycomb" || c.pattern === "triangle" ? 0.866 : 1);
+  const rowStep = c.cellSize * (c.pattern === "honeycomb" ? 0.866 : 1);
   const colStep = c.cellSize;
   const rows = Math.ceil((innerRadius * 2) / rowStep) + 1;
   const cols = Math.ceil((innerRadius * 2) / colStep) + 1;
   for (let row = -rows; row <= rows; row++) {
     for (let col = -cols; col <= cols; col++) {
-      const stagger = c.pattern === "honeycomb" || c.pattern === "triangle" ? (row & 1) * colStep / 2 : 0;
+      const stagger = c.pattern === "honeycomb" ? (row & 1) * colStep / 2 : 0;
       const x = col * colStep + stagger;
       const y = row * rowStep;
       if (Math.hypot(x, y) <= innerRadius - margin) points.push([x, y]);
@@ -115,7 +115,7 @@ export function createPerforatedPanel(config: Partial<OrnamentConfig>) {
       shape.holes.push(hole);
     } else {
       const sides = c.pattern === "square" || c.pattern === "diamond" ? 4 : c.pattern === "triangle" ? 3 : 6;
-      const radius = c.pattern === "diamond" ? holeRadius * 1.18 : holeRadius;
+      const radius = holeRadius;
       const rotation = c.pattern === "diamond" ? Math.PI / 4 : c.pattern === "triangle" ? -Math.PI / 2 : 0;
       addHole(shape, polygonPoints(x, y, radius, sides, rotation));
     }
@@ -182,9 +182,11 @@ export function buildOrnament(input: Partial<OrnamentConfig>) {
   const backAssembly = new THREE.Group();
   backAssembly.name = "rear-perforated-panel";
   const backMesh = new THREE.Mesh(back.geometry, meshMaterial);
+  backMesh.name = "rear-perforated-panel";
   backMesh.position.z = c.panelThickness + c.connectorHeight * 0.6;
   backAssembly.add(backMesh);
   const backRim = new THREE.Mesh(makeRim(c, true), designMaterial);
+  backRim.name = "rear-solid-rim";
   backRim.position.z = c.panelThickness + c.connectorHeight * 0.6;
   backAssembly.add(backRim);
   group.add(backAssembly);
