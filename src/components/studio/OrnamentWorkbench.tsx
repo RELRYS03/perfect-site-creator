@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import { Download, Save, Box, RotateCcw, Sparkles, Layers, Settings2, Palette, CircleHelp } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -74,7 +74,7 @@ function RangeControl({
   );
 }
 
-function Section({ title, icon, children }: { title: string; icon: React.ReactNode; children: React.ReactNode }) {
+function Section({ title, icon, children }: { title: string; icon: ReactNode; children: ReactNode }) {
   return <section className="press-section"><h2>{icon}{title}</h2>{children}</section>;
 }
 
