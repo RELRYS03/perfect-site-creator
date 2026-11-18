@@ -205,8 +205,9 @@ export default function StudioApp({ page = "studio" }: { page?: StudioPage }) {
   };
   const exportModel = async (format: "stl" | "glb") => {
     setBusy(true);
-    const model = editorMode === "ornament" ? buildOrnament(ornamentConfig) : buildModel(config);
+    let model: ReturnType<typeof buildModel> | null = null;
     try {
+      model = editorMode === "ornament" ? buildOrnament(ornamentConfig) : buildModel(config);
       if (format === "stl") {
         const { STLExporter } = await import("three/examples/jsm/exporters/STLExporter.js");
         const data = new STLExporter().parse(model, { binary: true });
@@ -236,8 +237,10 @@ export default function StudioApp({ page = "studio" }: { page?: StudioPage }) {
     } catch (error) {
       notify(error instanceof Error ? `Não foi possível exportar: ${error.message}` : "Não foi possível exportar o modelo.");
     } finally {
-      if (editorMode === "ornament") disposeOrnament(model);
-      else disposeModel(model);
+      if (model) {
+        if (editorMode === "ornament") disposeOrnament(model);
+        else disposeModel(model);
+      }
       setBusy(false);
     }
   };
@@ -510,7 +513,13 @@ export default function StudioApp({ page = "studio" }: { page?: StudioPage }) {
                 <div className="model-badge">
                   <span className="status-dot" />
                   {editorMode === "ornament"
-                    ? `Adorno perfurado · ${ornamentConfig.diameter} mm · ${ornamentConfig.pattern}`
+                    ? `Adorno perfurado · ${ornamentConfig.diameter} mm · ${({
+                      honeycomb: "Colmeia",
+                      diamond: "Losango",
+                      round: "Redondo",
+                      square: "Quadrado",
+                      triangle: "Triângulos",
+                    } as Record<LatticePattern, string>)[ornamentConfig.pattern]}`
                     : `${shapes.find((s) => s.kind === config.shape)?.name} · ${config.diameter} × ${config.thickness} mm`}
                 </div>
                 <div className="orientation">
