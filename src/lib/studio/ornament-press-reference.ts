@@ -395,7 +395,7 @@ function createProfileVolume(
     points.push(new THREE.Vector2(r, z));
   }
   points.push(new THREE.Vector2(0, bottomZ));
-  const geometry = new THREE.LatheGeometry(points, 128);
+  const geometry = new THREE.LatheGeometry(points, 96);
   geometry.rotateX(Math.PI / 2);
   geometry.computeVertexNormals();
   geometry.computeBoundingBox();
@@ -408,7 +408,7 @@ function createMoldBlockBase(config: PressOrnamentConfig, topZ: number, scale: n
   const geometry = new THREE.ExtrudeGeometry(shape, {
     depth: topZ,
     bevelEnabled: false,
-    curveSegments: 48,
+    curveSegments: 96,
   });
   const base = new THREE.Mesh(geometry, makeMaterial(config.pressColor, 0.74));
   base.name = "female-cavity-block-body";
