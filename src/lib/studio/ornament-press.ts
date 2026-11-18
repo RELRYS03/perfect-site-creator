@@ -268,6 +268,7 @@ export function createPressDome(configInput: Partial<PressOrnamentConfig>, sign:
 
 function createRim(config: PressOrnamentConfig, female: boolean) {
   const radius = config.diameter / 2;
+  const pinRadius = Math.min(1.35, config.rimWidth * 0.28);
   const shape = new THREE.Shape();
   shape.absarc(0, 0, radius, 0, Math.PI * 2, false);
   const inner = new THREE.Path();
@@ -281,7 +282,7 @@ function createRim(config: PressOrnamentConfig, female: boolean) {
       hole.absarc(
         pinRadius * Math.cos(angle),
         pinRadius * Math.sin(angle),
-        1.5 + config.clearance,
+        pinRadius + config.clearance,
         0,
         Math.PI * 2,
         true,
@@ -455,15 +456,20 @@ function buildHemisphere(config: PressOrnamentConfig, sign: 1 | -1, male: boolea
 
   const rim = new THREE.Mesh(createRim(config, !male), makeMaterial(config.designColor, 0.5));
   rim.name = male ? "male-joining-rim" : "female-joining-rim";
+  // The male rim occupies the front side of the equator and the female rim
+  // the rear side. Their mating faces meet at z=0 instead of overlapping.
+  rim.position.z = sign * config.panelThickness / 2;
   rim.castShadow = true;
   group.add(rim);
 
   if (male && config.joinMethod === "pins") {
     const radius = config.diameter / 2 - config.rimWidth / 2;
+    const pinRadius = Math.min(1.35, config.rimWidth * 0.28);
+    const pinLength = config.panelThickness + config.clearance * 2;
     for (let index = 0; index < 4; index++) {
       const angle = (index * Math.PI) / 2;
       const pin = new THREE.Mesh(
-        new THREE.CylinderGeometry(1.5, 1.5, 2.8 + config.clearance, 24),
+        new THREE.CylinderGeometry(pinRadius, pinRadius, pinLength, 24),
         makeMaterial(config.pressColor, 0.45),
       );
       pin.name = `joining-pin-${index + 1}`;
@@ -471,7 +477,7 @@ function buildHemisphere(config: PressOrnamentConfig, sign: 1 | -1, male: boolea
       pin.position.set(
         radius * Math.cos(angle),
         radius * Math.sin(angle),
-        -(2.8 + config.clearance) / 2,
+        -pinLength / 2,
       );
       group.add(pin);
     }
