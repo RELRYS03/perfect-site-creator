@@ -34,7 +34,7 @@ export const GIGAPRINT_BALL_REFERENCE = {
   plungerApexZ: 43.5,
   blockBounds: [127.58, 147.145, 45] as const,
   guidePostDiameter: 8,
-  guideHoleDiameter: 8.6,
+  guideHoleDiameter: 8.4,
   guidePostHeight: 7,
   locatorPostDiameter: 2.8,
   locatorPostHeight: 2,
@@ -473,7 +473,7 @@ export function buildReferenceFemaleMold(input: Partial<PressOrnamentConfig> = {
 function createPlungerFlange(config: PressOrnamentConfig, scale: number, plateDepth: number) {
   const shape = roundedTriangleShape(127.364 * scale, 147.144 * scale, 11 * scale, -1.6945 * scale);
   GIGAPRINT_BALL_REFERENCE.guidePostCenters.forEach(([x, y]) => {
-    shape.holes.push(circleHole(x * scale, y * scale, 4.3 * scale));
+    shape.holes.push(circleHole(x * scale, y * scale, (4 + config.clearance) * scale));
   });
   const geometry = new THREE.ExtrudeGeometry(shape, {
     depth: plateDepth,
@@ -521,7 +521,7 @@ export function buildReferenceMalePlunger(input: Partial<PressOrnamentConfig> = 
   group.add(createPlungerFlange(config, scale, plateDepth));
   group.add(createPlungerDome(config, scale, depthScale));
   group.userData["component"] = "male-plunger";
-  group.userData["guideHoleDiameterMm"] = 8.6 * scale;
+  group.userData["guideHoleDiameterMm"] = (8 + config.clearance * 2) * scale;
   group.userData["flangeSeatPlaneZ"] = plateDepth;
   group.userData["printOrientation"] = "dome-up";
   return group;
