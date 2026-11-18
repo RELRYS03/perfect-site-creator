@@ -589,22 +589,98 @@ function createPlungerFlange(config: PressOrnamentConfig, scale: number, plateDe
 }
 
 function createPlungerDome(config: PressOrnamentConfig, scale: number, depthScale: number) {
-  const profile = PLUNGER_PRINT_PROFILE.map(([r, z]) => [r * scale, z * depthScale] as const);
-  const plateTop = 10 * depthScale;
-  const points: THREE.Vector2[] = [
-    new THREE.Vector2(0, plateTop),
-    new THREE.Vector2(50 * scale, plateTop),
-    new THREE.Vector2(50 * scale, 11 * depthScale),
-  ];
-  for (let index = profile.length - 1; index >= 0; index--) {
-    const [r, z] = profile[index]!;
-    points.push(new THREE.Vector2(r, z));
+  const profile = PLUNGER_PRINT_PROFILE.map(([radius, z]) => [
+    radius * scale,
+    z * depthScale,
+  ] as const);
+  const baseZ = 10 * depthScale;
+  const segments = 96;
+  const angles = Array.from({ length: segments }, (_, index) => index * Math.PI * 2 / segments);
+  const positions: number[] = [];
+  const faces: number[] = [];
+  const baseCenter = positions.length / 3;
+  positions.push(0, 0, baseZ);
+
+  const baseRing = angles.map((angle) => {
+    const vertex = positions.length / 3;
+    positions.push(50 * scale * Math.cos(angle), 50 * scale * Math.sin(angle), baseZ);
+    return vertex;
+  });
+
+  // Flat underside of the dome. A single centre vertex avoids LatheGeometry's
+  // duplicated pole vertices and zero-length edges.
+  for (let index = 0; index < segments; index++) {
+    const next = (index + 1) % segments;
+    faces.push(baseCenter, baseRing[next]!, baseRing[index]!);
   }
-  points.push(new THREE.Vector2(0, plateTop));
-  const geometry = new THREE.LatheGeometry(points, 128);
-  geometry.rotateX(Math.PI / 2);
+
+  let previousRing = baseRing;
+  let previousRadius = 50 * scale;
+  for (let profileIndex = profile.length - 1; profileIndex >= 0; profileIndex--) {
+    const [radius, z] = profile[profileIndex]!;
+    let currentRing: number[];
+    if (radius < 1e-8) {
+      const apex = positions.length / 3;
+      positions.push(0, 0, z);
+      currentRing = [apex];
+    } else if (
+      Math.abs(radius - 50 * scale) < 0.001 &&
+      Math.abs(z - 11 * depthScale) < 0.01
+    ) {
+      currentRing = angles.map((angle) => {
+        const vertex = positions.length / 3;
+        positions.push(radius * Math.cos(angle), radius * Math.sin(angle), z);
+        return vertex;
+      });
+      // Cylindrical skirt between the flange seat and the start of the dome.
+      for (let index = 0; index < segments; index++) {
+        const next = (index + 1) % segments;
+        const a = previousRing[index]!;
+        const b = previousRing[next]!;
+        const cc = currentRing[next]!;
+        const d = currentRing[index]!;
+        faces.push(a, b, cc, a, cc, d);
+      }
+      previousRing = currentRing;
+      previousRadius = radius;
+      continue;
+    } else {
+      currentRing = angles.map((angle) => {
+        const vertex = positions.length / 3;
+        positions.push(radius * Math.cos(angle), radius * Math.sin(angle), z);
+        return vertex;
+      });
+    }
+
+    if (currentRing.length === 1) {
+      const apex = currentRing[0]!;
+      for (let index = 0; index < segments; index++) {
+        const next = (index + 1) % segments;
+        faces.push(previousRing[index]!, previousRing[next]!, apex);
+      }
+    } else {
+      for (let index = 0; index < segments; index++) {
+        const next = (index + 1) % segments;
+        const a = previousRing[index]!;
+        const b = previousRing[next]!;
+        const cc = currentRing[next]!;
+        const d = currentRing[index]!;
+        // Dome radius decreases while height increases; this winding points outward.
+        faces.push(a, b, cc, a, cc, d);
+      }
+    }
+    previousRing = currentRing;
+    previousRadius = radius;
+  }
+
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setIndex(faces);
   geometry.computeVertexNormals();
   geometry.computeBoundingBox();
+  geometry.computeBoundingSphere();
+  geometry.userData["latheProfile"] = profile;
+  geometry.userData["poleVerticesMerged"] = true;
   const dome = new THREE.Mesh(geometry, makeMaterial(config.pressColor, 0.62));
   dome.name = "male-plunger-dome-1p5mm-surface-gap";
   dome.castShadow = true;
