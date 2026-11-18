@@ -566,7 +566,7 @@ function buildMaleMold(config: PressOrnamentConfig) {
   handle.name = "upper-press-handle";
   handle.position.z = 15;
   group.add(handle);
-  group.position.z = depth + 18;
+  group.position.z = depth + 12 + config.panelThickness + 0.6;
   return group;
 }
 
