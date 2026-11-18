@@ -737,7 +737,12 @@ export function buildPressOrnamentReference(
   group.name = "gigaprint-ball-press-reference-" + mode;
 
   if (mode === "flat") {
-    group.add(buildReferenceFlatBlank(config));
+    const front = buildReferenceFlatBlank(config);
+    const back = buildReferenceFlatBlank(config);
+    front.position.x = -65;
+    back.position.x = 65;
+    group.add(front, back);
+    group.userData["printCopies"] = 2;
   } else if (mode === "mold") {
     group.add(buildPressAssembly(config, 16));
     group.userData["workingGapMm"] = GIGAPRINT_BALL_REFERENCE.pressGap;
@@ -760,17 +765,35 @@ export function buildPressOrnamentReference(
     group.userData["halves"] = 2;
     group.userData["connectorCountPerHalf"] = 3;
   } else {
-    const tooling = buildPressAssembly(config, 17);
-    tooling.position.x = -155;
-    group.add(tooling);
+    // Match the four manufacturing plates in the source 3MF. Each physical
+    // part is shown separately so the viewer never hides the cavity or plunger.
+    const front = buildReferenceFlatBlank(config);
+    front.position.set(-72, 72, 0);
+    front.name = "plate-1-front-mesh";
+    group.add(front);
 
-    const blank = buildReferenceFlatBlank(config);
-    blank.position.x = 0;
-    group.add(blank);
+    const back = buildReferenceFlatBlank(config);
+    back.position.set(72, 72, 0);
+    back.name = "plate-2-back-mesh";
+    group.add(back);
 
-    const formed = buildAssembledOrnament(config, true);
-    formed.position.x = 155;
-    group.add(formed);
+    const cavity = buildReferenceFemaleMold(config);
+    cavity.position.set(-72, -72, 0);
+    cavity.name = "plate-3-press-cavity-block";
+    group.add(cavity);
+
+    const plunger = buildReferenceMalePlunger(config);
+    plunger.position.set(72, -72, 0);
+    plunger.name = "plate-4-press-plunger";
+    group.add(plunger);
+
+    group.userData["printPlateCount"] = 4;
+    group.userData["manufacturingParts"] = [
+      "Ornament mesh, front half",
+      "Ornament mesh, back half",
+      "Press cavity block",
+      "Press plunger",
+    ];
   }
 
   group.updateMatrixWorld(true);
