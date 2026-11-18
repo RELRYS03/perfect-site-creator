@@ -124,10 +124,15 @@ export default function ModelScene({
       disposeAny(current.model);
     }
     const model = (buildObject ? buildObject() : buildModel(config)) as THREE.Group;
+    // Studio uses Y-up and a horizontal build plate. Custom ornament geometry
+    // is authored in the slicer convention (XY plate, Z height), so orient it
+    // for the viewport without changing the exported source geometry.
+    model.rotation.x = -Math.PI / 2;
     if (!buildObject) {
-      model.rotation.x = -Math.PI / 2;
       model.rotation.z = -0.1;
       model.position.y = 1;
+    } else {
+      model.position.y = 0;
     }
     model.traverse((child) => {
       if (child instanceof THREE.Mesh) {
