@@ -378,112 +378,131 @@ export function buildReferenceFlatBlank(input: Partial<PressOrnamentConfig> = {}
   return group;
 }
 
-function signedArea(points: THREE.Vector2[]) {
-  let area = 0;
-  for (let index = 0; index < points.length; index++) {
-    const current = points[index]!;
-    const next = points[(index + 1) % points.length]!;
-    area += current.x * next.y - next.x * current.y;
+function rayPolygonRadius(contour: THREE.Vector2[], angle: number) {
+  const dx = Math.cos(angle);
+  const dy = Math.sin(angle);
+  let nearest = Number.POSITIVE_INFINITY;
+  for (let index = 0; index < contour.length; index++) {
+    const a = contour[index]!;
+    const b = contour[(index + 1) % contour.length]!;
+    const vx = b.x - a.x;
+    const vy = b.y - a.y;
+    const denominator = dx * vy - dy * vx;
+    if (Math.abs(denominator) < 1e-9) continue;
+    const t = (a.x * vy - a.y * vx) / denominator;
+    const u = (a.x * dy - a.y * dx) / denominator;
+    if (t > 0 && u >= -1e-8 && u <= 1 + 1e-8) nearest = Math.min(nearest, t);
   }
-  return area / 2;
-}
-
-function cleanContour(points: THREE.Vector2[]) {
-  const cleaned = points.slice();
-  if (cleaned.length > 2 && cleaned[0]!.distanceTo(cleaned[cleaned.length - 1]!) < 1e-6) {
-    cleaned.pop();
+  if (!Number.isFinite(nearest)) {
+    throw new Error("Não foi possível obter o contorno radial do bloco de prensagem.");
   }
-  return cleaned;
+  return nearest;
 }
 
 function createMoldBlockBase(config: PressOrnamentConfig, topZ: number, scale: number) {
-  const shape = roundedTriangleShape(
+  const outline = roundedTriangleShape(
     127.58 * scale,
     147.145 * scale,
     11 * scale,
     -1.6945 * scale,
-  );
-  const extracted = shape.extractPoints(96);
-  let outer = cleanContour(extracted.shape);
-  let hole = cleanContour(circleHole(0, 0, 50 * scale, false).getPoints(96));
-  if (signedArea(outer) < 0) outer = outer.reverse();
-  if (signedArea(hole) > 0) hole = hole.reverse();
+  ).extractPoints(96).shape;
+  const segments = 96;
+  const angles = Array.from({ length: segments }, (_, index) => index * Math.PI * 2 / segments);
+  const outerRadii = angles.map((angle) => rayPolygonRadius(outline, angle));
+  const innerRadius = 50 * scale;
+  if (Math.min(...outerRadii) <= innerRadius + 1) {
+    throw new Error("O bloco inferior ficou fino demais ao redor da cavidade.");
+  }
 
-  const topFaces = THREE.ShapeUtils.triangulateShape(outer, [hole]);
-  const bottomFaces = THREE.ShapeUtils.triangulateShape(outer, []);
   const positions: number[] = [];
   const faces: number[] = [];
-  const topOuterStart = 0;
-  const topHoleStart = outer.length;
+  const outerTop: number[] = [];
+  const innerTop: number[] = [];
+  const outerBottom: number[] = [];
 
-  for (const point of outer) positions.push(point.x, point.y, topZ);
-  for (const point of hole) positions.push(point.x, point.y, topZ);
-
-  for (const face of topFaces) {
-    faces.push(face[0]!, face[1]!, face[2]!);
+  // Top annulus: every outer and inner edge is explicitly paired.
+  for (let index = 0; index < segments; index++) {
+    const angle = angles[index]!;
+    const outer = outerRadii[index]!;
+    outerTop.push(positions.length / 3);
+    positions.push(outer * Math.cos(angle), outer * Math.sin(angle), topZ);
+  }
+  for (const angle of angles) {
+    innerTop.push(positions.length / 3);
+    positions.push(innerRadius * Math.cos(angle), innerRadius * Math.sin(angle), topZ);
+  }
+  for (let index = 0; index < segments; index++) {
+    const next = (index + 1) % segments;
+    const oa = outerTop[index]!;
+    const ob = outerTop[next]!;
+    const ia = innerTop[index]!;
+    const ib = innerTop[next]!;
+    faces.push(oa, ob, ib, oa, ib, ia);
   }
 
-  const bottomStart = positions.length / 3;
-  for (const point of outer) positions.push(point.x, point.y, 0);
-  for (const face of bottomFaces) {
-    faces.push(
-      bottomStart + face[0]!,
-      bottomStart + face[2]!,
-      bottomStart + face[1]!,
-    );
+  // Solid underside with a centre fan and no hole.
+  const bottomCenter = positions.length / 3;
+  positions.push(0, 0, 0);
+  for (let index = 0; index < segments; index++) {
+    const angle = angles[index]!;
+    const radius = outerRadii[index]!;
+    outerBottom.push(positions.length / 3);
+    positions.push(radius * Math.cos(angle), radius * Math.sin(angle), 0);
+  }
+  for (let index = 0; index < segments; index++) {
+    const next = (index + 1) % segments;
+    faces.push(bottomCenter, outerBottom[next]!, outerBottom[index]!);
   }
 
-  // Outer triangular walls connect the top flange to the solid bottom.
-  for (let index = 0; index < outer.length; index++) {
-    const next = (index + 1) % outer.length;
-    const topA = topOuterStart + index;
-    const topB = topOuterStart + next;
-    const bottomA = bottomStart + index;
-    const bottomB = bottomStart + next;
+  // External block walls join the top perimeter to the underside perimeter.
+  for (let index = 0; index < segments; index++) {
+    const next = (index + 1) % segments;
+    const topA = outerTop[index]!;
+    const topB = outerTop[next]!;
+    const bottomA = outerBottom[index]!;
+    const bottomB = outerBottom[next]!;
     faces.push(bottomA, bottomB, topB, bottomA, topB, topA);
   }
 
-  // The bowl is built into the block shell. The final profile ring reuses
-  // the top-face hole vertices, so no open circular seam remains.
-  const angles = hole.map((point) => Math.atan2(point.y, point.x));
+  // The concave pressing surface uses the same 96 vertices at the opening,
+  // so its rim is welded to the top annulus instead of creating a T-junction.
   const profile = CAVITY_PROFILE.map(([radius, z]) => [
     radius * scale,
     z * (config.pressDepth / 32.5),
   ] as const);
-  profile.push([50 * scale, topZ]);
+  profile.push([innerRadius, topZ]);
 
   let previousRing: number[] = [];
-  for (let profileIndex = 0; profileIndex < profile.length; profileIndex++) {
-    const [radius, z] = profile[profileIndex]!;
+  for (const [radius, z] of profile) {
     let currentRing: number[];
-    if (profileIndex === profile.length - 1) {
-      currentRing = angles.map((_, index) => topHoleStart + index);
-    } else if (radius < 1e-8) {
-      const centerIndex = positions.length / 3;
+    if (radius < 1e-8) {
+      const center = positions.length / 3;
       positions.push(0, 0, z);
-      currentRing = [centerIndex];
+      currentRing = [center];
+    } else if (Math.abs(radius - innerRadius) < 0.001 && Math.abs(z - topZ) < 0.001) {
+      currentRing = innerTop;
     } else {
       currentRing = angles.map((angle) => {
-        const vertexIndex = positions.length / 3;
+        const vertex = positions.length / 3;
         positions.push(radius * Math.cos(angle), radius * Math.sin(angle), z);
-        return vertexIndex;
+        return vertex;
       });
     }
 
     if (previousRing.length === 1 && currentRing.length > 1) {
       const center = previousRing[0]!;
-      for (let index = 0; index < currentRing.length; index++) {
-        const next = (index + 1) % currentRing.length;
+      for (let index = 0; index < segments; index++) {
+        const next = (index + 1) % segments;
         faces.push(center, currentRing[next]!, currentRing[index]!);
       }
     } else if (previousRing.length > 1 && currentRing.length > 1) {
-      for (let index = 0; index < currentRing.length; index++) {
-        const next = (index + 1) % currentRing.length;
+      for (let index = 0; index < segments; index++) {
+        const next = (index + 1) % segments;
         const a = previousRing[index]!;
         const b = previousRing[next]!;
-        const c = currentRing[next]!;
         const d = currentRing[index]!;
-        faces.push(a, b, c, a, c, d);
+        const cc = currentRing[next]!;
+        faces.push(a, b, cc, a, cc, d);
       }
     }
     previousRing = currentRing;
