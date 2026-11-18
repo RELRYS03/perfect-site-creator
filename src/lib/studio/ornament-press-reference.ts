@@ -1,10 +1,15 @@
 import * as THREE from "three";
 import {
-  defaultPressOrnamentConfig,
   validatePressOrnamentConfig,
   type PressOrnamentConfig,
   type PressPreviewMode,
 } from "@/lib/studio/ornament-press";
+
+export type PressReferencePreviewMode =
+  | PressPreviewMode
+  | "mold-print"
+  | "female-mold"
+  | "male-plunger";
 
 /**
  * Reference measurements reverse-engineered from ball_ornament.zip:
@@ -149,11 +154,16 @@ function addHoneycombHoles(shape: THREE.Shape, config: PressOrnamentConfig, maxR
   return count;
 }
 
-function roundedTriangleShape(width = 127.58, height = 147.145, corner = 11) {
+function roundedTriangleShape(
+  width = 127.58,
+  height = 147.145,
+  corner = 11,
+  centerOffsetY = 0,
+) {
   const vertices: [number, number][] = [
-    [-width / 2, height / 2],
-    [width / 2, height / 2],
-    [0, -height / 2],
+    [-width / 2, height / 2 + centerOffsetY],
+    [width / 2, height / 2 + centerOffsetY],
+    [0, -height / 2 + centerOffsetY],
   ];
   const shape = new THREE.Shape();
   const starts = vertices.map((point, index) => {
@@ -389,7 +399,7 @@ function createProfileVolume(
 }
 
 function createMoldBlockBase(config: PressOrnamentConfig, topZ: number, scale: number) {
-  const shape = roundedTriangleShape(127.58 * scale, 147.145 * scale, 11 * scale);
+  const shape = roundedTriangleShape(127.58 * scale, 147.145 * scale, 11 * scale, -1.6945 * scale);
   shape.holes.push(circleHole(0, 0, 50 * scale));
   const geometry = new THREE.ExtrudeGeometry(shape, {
     depth: topZ,
@@ -414,7 +424,8 @@ export function buildReferenceFemaleMold(input: Partial<PressOrnamentConfig> = {
   group.add(createMoldBlockBase(config, topZ, scale));
 
   const cavityProfile = CAVITY_PROFILE.map(([r, z]) => [r * scale, z * depthScale] as const);
-  const bowlGeometry = createProfileVolume(cavityProfile, 0, topZ, scale);
+  // The input profile is already scaled into model millimetres.
+  const bowlGeometry = createProfileVolume(cavityProfile, 0, topZ, 1);
   const bowl = new THREE.Mesh(bowlGeometry, makeMaterial(config.pressColor, 0.66));
   bowl.name = "female-concave-forming-surface";
   bowl.castShadow = true;
@@ -456,7 +467,7 @@ export function buildReferenceFemaleMold(input: Partial<PressOrnamentConfig> = {
 }
 
 function createPlungerFlange(config: PressOrnamentConfig, scale: number, plateDepth: number) {
-  const shape = roundedTriangleShape(127.364 * scale, 147.144 * scale, 11 * scale);
+  const shape = roundedTriangleShape(127.364 * scale, 147.144 * scale, 11 * scale, -1.6945 * scale);
   GIGAPRINT_BALL_REFERENCE.guidePostCenters.forEach(([x, y]) => {
     shape.holes.push(circleHole(x * scale, y * scale, 4.3 * scale));
   });
@@ -638,7 +649,7 @@ function domePoint(x: number, y: number, config: PressOrnamentConfig, sign: 1 | 
   const radius = Math.min(49.5 * config.diameter / 100, Math.hypot(x, y));
   const angle = Math.atan2(y, x);
   const surfaceZ = profileDomeZ(radius, config);
-  const slope = -profileSlope(CAVITY_PROFILE, radius / (config.diameter / 100));
+  const slope = -profileSlope(CAVITY_PROFILE, radius / (config.diameter / 100)) * (config.pressDepth / 32.5);
   const normal = Math.sqrt(1 + slope * slope);
   return new THREE.Vector3(
     (radius - offset * slope / normal) * Math.cos(angle),
@@ -714,7 +725,7 @@ function buildAssembledOrnament(config: PressOrnamentConfig, exploded = false) {
 
 export function buildPressOrnamentReference(
   input: Partial<PressOrnamentConfig>,
-  mode: PressPreviewMode | "mold-print" = "system",
+  mode: PressReferencePreviewMode = "system",
 ) {
   const config = validatePressOrnamentConfig(input);
   const group = new THREE.Group();
@@ -730,6 +741,10 @@ export function buildPressOrnamentReference(
     block.position.x = -75;
     plunger.position.x = 75;
     group.add(block, plunger);
+  } else if (mode === "female-mold") {
+    group.add(buildReferenceFemaleMold(config));
+  } else if (mode === "male-plunger") {
+    group.add(buildReferenceMalePlunger(config));
   } else if (mode === "half") {
     group.add(buildHalf(config, 1, true));
   } else if (mode === "assembled") {
