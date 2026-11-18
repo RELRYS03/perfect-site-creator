@@ -7,23 +7,7 @@ import {
 
 const MODEL_NS = "http://schemas.microsoft.com/3dmanufacturing/core/2015/02";
 
-async function blobToBytes(blob: Blob) {
-  return await new Promise<Uint8Array>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (!(reader.result instanceof ArrayBuffer)) {
-        reject(new Error("O FileReader não retornou um ArrayBuffer."));
-        return;
-      }
-      resolve(new Uint8Array(reader.result));
-    };
-    reader.onerror = () => reject(reader.error ?? new Error("Falha ao ler o 3MF."));
-    reader.readAsArrayBuffer(blob);
-  });
-}
-
-async function readStoredZip(blob: Blob) {
-  const bytes = await blobToBytes(blob);
+function readStoredZip(bytes: Uint8Array) {
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   const decoder = new TextDecoder();
   const files = new Map<string, string>();
@@ -51,9 +35,9 @@ function parseXml(xml: string) {
 }
 
 async function verify3mf(config: typeof defaultPressOrnamentConfig, expectedTitle = "Ball ornament") {
-  const blob = await createBallOrnament3MF(config, expectedTitle);
-  const { files, size } = await readStoredZip(blob);
-  expect(blob.type).toBe("application/vnd.ms-package.3dmanufacturing-3dmodel+zip");
+  const bytes = createBallOrnament3MF(config, expectedTitle);
+  const { files, size } = readStoredZip(bytes);
+  expect(bytes).toBeInstanceOf(Uint8Array);
   expect(size).toBeLessThan(28 * 1024 * 1024);
 
   for (const required of [
