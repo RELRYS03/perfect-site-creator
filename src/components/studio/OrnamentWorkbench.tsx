@@ -47,8 +47,8 @@ const previewOptions: { value: PressReferencePreviewMode; label: string; detail:
   { value: "mold", label: "Prensa aberta", detail: "Bloco e êmbolo alinhados" },
   { value: "female-mold", label: "Bloco inferior", detail: "Cavidade e pinos-guia" },
   { value: "male-plunger", label: "Êmbolo superior", detail: "Cúpula e furos-guia" },
-  { value: "half", label: "Metade formada", detail: "Casca após a prensagem" },
-  { value: "assembled", label: "Enfeite montado", detail: "Duas metades unidas" },
+  { value: "half", label: "Metade formada", detail: "Interior da casca vazada" },
+  { value: "assembled", label: "Enfeite montado", detail: "Cavidade interna vazia" },
 ];
 
 function RangeControl({
@@ -312,7 +312,8 @@ export default function OrnamentWorkbench() {
           <div className="press-canvas">
             <ModelScene config={defaultConfig} view={preview === "flat" ? "2d" : "3d"}
               zoom={100} reset={reset} wireframe={wireframe} buildObject={buildPreview}
-              distanceScale={preview === "system" ? 4.2 : preview === "mold" ? 2.1 : preview === "flat" ? 1.8 : 1.45} />
+              distanceScale={preview === "system" ? 4.2 : preview === "mold" ? 2.1 : preview === "flat" ? 1.8 : 1.45}
+              interiorPreview={preview === "half" || preview === "assembled" ? preview : "none"} />
           </div>
           <div className="press-preview-footer">
             <span><i /> {config.diameter} mm · {config.form} · {config.pattern}</span>
