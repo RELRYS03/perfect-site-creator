@@ -40,17 +40,35 @@ export function validateOrnamentConfig(input: Partial<OrnamentConfig>): Ornament
   const diameter = clamp(c.diameter, 40, 180);
   const rimWidth = clamp(c.rimWidth, 2, Math.min(12, diameter / 5));
   const cellSize = clamp(c.cellSize, 3, 18);
+  const connectorClearance = clamp(
+    c.connectorClearance,
+    0.1,
+    Math.min(0.6, Math.max(0.1, (rimWidth - 1.9) / 2)),
+  );
+  const connectorDiameter = clamp(
+    c.connectorDiameter,
+    1.5,
+    Math.max(1.5, rimWidth - 0.4 - connectorClearance * 2),
+  );
+  const validPatterns: LatticePattern[] = ["honeycomb", "diamond", "round", "square", "triangle"];
+  const validColor = (value: string, fallback: string) =>
+    /^#[0-9a-f]{6}$/i.test(value) ? value : fallback;
   return {
     ...c,
     diameter,
     panelThickness: clamp(c.panelThickness, 0.8, 4),
     rimWidth,
+    pattern: validPatterns.includes(c.pattern) ? c.pattern : defaultOrnamentConfig.pattern,
     cellSize,
     webWidth: clamp(c.webWidth, 0.6, Math.min(3, cellSize / 2)),
-    connectorDiameter: clamp(c.connectorDiameter, 1.5, 6),
-    connectorClearance: clamp(c.connectorClearance, 0.1, 0.6),
+    connectorDiameter,
+    connectorClearance,
     connectorHeight: clamp(c.connectorHeight, 1, 5),
+    includeLoop: typeof c.includeLoop === "boolean" ? c.includeLoop : defaultOrnamentConfig.includeLoop,
     loopDiameter: clamp(c.loopDiameter, 3, 12),
+    meshColor: validColor(c.meshColor, defaultOrnamentConfig.meshColor),
+    designColor: validColor(c.designColor, defaultOrnamentConfig.designColor),
+    pressColor: validColor(c.pressColor, defaultOrnamentConfig.pressColor),
   };
 }
 type Point = [number, number];
@@ -74,7 +92,7 @@ export function createPerforatedPanel(config: Partial<OrnamentConfig>) {
   const innerRadius = c.diameter / 2 - c.rimWidth;
   const shape = new THREE.Shape();
   shape.absarc(0, 0, innerRadius, 0, Math.PI * 2, false);
-  const holeRadius = Math.max(0.8, (c.cellSize - c.webWidth) / 2);
+  const holeRadius = Math.max(0.5, (c.cellSize - c.webWidth) / 2);
   const shapeFactor = c.pattern === "diamond" ? 1.18 : c.pattern === "square" ? Math.SQRT2 : 1;
   const margin = holeRadius * shapeFactor + c.webWidth * 0.55;
   const points: Point[] = [];
@@ -96,7 +114,7 @@ export function createPerforatedPanel(config: Partial<OrnamentConfig>) {
       hole.absarc(x, y, holeRadius, 0, Math.PI * 2, true);
       shape.holes.push(hole);
     } else {
-      const sides = c.pattern === "square" ? 4 : c.pattern === "triangle" ? 3 : 6;
+      const sides = c.pattern === "square" || c.pattern === "diamond" ? 4 : c.pattern === "triangle" ? 3 : 6;
       const radius = c.pattern === "diamond" ? holeRadius * 1.18 : holeRadius;
       const rotation = c.pattern === "diamond" ? Math.PI / 4 : c.pattern === "triangle" ? -Math.PI / 2 : 0;
       addHole(shape, polygonPoints(x, y, radius, sides, rotation));
@@ -109,6 +127,8 @@ export function createPerforatedPanel(config: Partial<OrnamentConfig>) {
     steps: 1,
   });
   geometry.computeVertexNormals();
+  geometry.computeBoundingBox();
+  geometry.computeBoundingSphere();
   return { geometry, perforationCount: points.length, config: c };
 }
 function makeRim(config: OrnamentConfig, connectorHoles = false) {
@@ -172,13 +192,22 @@ export function buildOrnament(input: Partial<OrnamentConfig>) {
       designMaterial,
     );
     loop.name = "hanging-loop";
-    loop.position.set(0, c.diameter / 2 - c.rimWidth / 2, c.panelThickness / 2);
+    // The loop overlaps the outer rim slightly so it is physically attached,
+    // while its full height is included in the reported build dimensions.
+    loop.position.set(0, c.diameter / 2 + c.loopDiameter - 0.25, c.panelThickness / 2);
     group.add(loop);
   }
+  group.updateMatrixWorld(true);
+  const bounds = new THREE.Box3().setFromObject(group);
+  const size = bounds.getSize(new THREE.Vector3());
   group.userData = {
     perforationCount: front.perforationCount,
     triangles: countTriangles(group),
-    dimensionsMm: { x: c.diameter, y: c.diameter, z: c.panelThickness * 2 + c.connectorHeight * 0.6 },
+    dimensionsMm: {
+      x: Number(size.x.toFixed(2)),
+      y: Number(size.y.toFixed(2)),
+      z: Number(size.z.toFixed(2)),
+    },
     config: c,
   };
   return group;
