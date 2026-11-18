@@ -98,7 +98,7 @@ async function verify3mf(config: typeof defaultPressOrnamentConfig, expectedTitl
   expect(modelXml).toContain('<base name="Product filament" displaycolor="' + config.meshColor.toUpperCase() + 'FF"/>');
   expect(modelXml).toContain('<base name="Press tooling filament" displaycolor="' + config.pressColor.toUpperCase() + 'FF"/>');
 
-  const objectPattern = /<object id="(\\d+)" name="([^"]+)" type="model" pid="1" pindex="(\\d+)"><mesh><vertices>([\\s\\S]*?)<\\/vertices><triangles>([\\s\\S]*?)<\\/triangles><\\/mesh><\\/object>/g;
+  const objectPattern = /<object id="(\d+)" name="([^"]+)" type="model" pid="1" pindex="(\d+)"><mesh><vertices>([\s\S]*?)<\/vertices><triangles>([\s\S]*?)<\/triangles><\/mesh><\/object>/g;
   const objects = [...modelXml.matchAll(objectPattern)];
   expect(objects).toHaveLength(4);
   expect(objects.map((match) => match[2])).toEqual([
