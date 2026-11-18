@@ -573,7 +573,9 @@ function buildMaleMold(config: PressOrnamentConfig) {
 function buildMoldSet(config: PressOrnamentConfig) {
   const group = new THREE.Group();
   group.name = "male-and-female-press-mold";
-  group.add(buildFemaleMold(config));
+  const female = buildFemaleMold(config);
+  female.position.z = config.pressDepth + 12;
+  group.add(female);
   group.add(buildMaleMold(config));
   return group;
 }
@@ -585,9 +587,15 @@ function buildSphere(config: PressOrnamentConfig, exploded: boolean, includeBack
   group.add(front);
   if (includeBack) {
     const rear = buildHemisphere(config, -1, false);
-    if (exploded) rear.position.z = -Math.max(8, config.pressDepth * 0.3);
+    const gap = Math.max(8, config.pressDepth * 0.3);
+    if (exploded) rear.position.z = -gap;
     group.add(rear);
-    if (exploded) front.position.z = Math.max(8, config.pressDepth * 0.3);
+    if (exploded) {
+      front.position.z = gap;
+      group.position.z = config.pressDepth + gap;
+    } else {
+      group.position.z = config.pressDepth;
+    }
   }
   group.userData["parts"] = includeBack ? 2 : 1;
   return group;
@@ -614,7 +622,7 @@ export function buildPressOrnament(
     group.add(mold);
 
     const blank = buildBlank(config);
-    blank.position.z = config.pressDepth * 0.45;
+    blank.position.z = 0;
     group.add(blank);
 
     const formed = buildSphere(config, true, true);
