@@ -354,7 +354,7 @@ export function buildReferenceFlatBlank(input: Partial<PressOrnamentConfig> = {}
         1.5 * scale,
         2 * scale,
         config.rimWidth,
-        config.pressColor,
+        config.meshColor,
       );
     });
   }
@@ -624,7 +624,7 @@ function buildHalf(config: PressOrnamentConfig, sign: 1 | -1, addDesign = true) 
         1.5 * scale,
         2 * scale,
         sign === 1 ? 0 : -2 * scale,
-        config.pressColor,
+        config.meshColor,
       );
     });
   }
@@ -709,7 +709,7 @@ function buildAssembledOrnament(config: PressOrnamentConfig, exploded = false) {
   const group = new THREE.Group();
   group.name = exploded ? "exploded-two-half-ornament" : "assembled-two-half-ornament";
   const front = buildHalf(config, 1, true);
-  const back = buildHalf(config, -1, true);
+  const back = buildHalf(config, -1, config.backDesign);
   back.rotation.z = Math.PI;
   if (exploded) {
     const gap = 10;
