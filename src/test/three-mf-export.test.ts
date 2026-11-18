@@ -117,6 +117,14 @@ async function verify3mf(config: typeof defaultPressOrnamentConfig, expectedTitl
     expect(triangleCount).toBeGreaterThan(100);
     expect(triangleCount).toBeLessThan(150_000);
 
+    const vertexCount = (vertexXml.match(/<vertex /g) ?? []).length;
+    const faceIndexPattern = /<triangle v1="(\\d+)" v2="(\\d+)" v3="(\\d+)"\\/>/g;
+    for (const face of triangleXml.matchAll(faceIndexPattern)) {
+      expect(Number(face[1])).toBeLessThan(vertexCount);
+      expect(Number(face[2])).toBeLessThan(vertexCount);
+      expect(Number(face[3])).toBeLessThan(vertexCount);
+    }
+
     const min = [Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY];
     const max = [Number.NEGATIVE_INFINITY, Number.NEGATIVE_INFINITY, Number.NEGATIVE_INFINITY];
     const vertexPattern = /<vertex x="([0-9.-]+)" y="([0-9.-]+)" z="([0-9.-]+)"\/>/g;
@@ -135,12 +143,21 @@ async function verify3mf(config: typeof defaultPressOrnamentConfig, expectedTitl
     expect(max[2]).toBeLessThanOrEqual(256.001);
   }
 
-  const settings = parseXml(files.get("Metadata/model_settings.config")!);
+  const settingsXml = files.get("Metadata/model_settings.config")!;
+  expectWellFormedXml(settingsXml);
+  const settings = parseXml(settingsXml);
   const plates = [...settings.getElementsByTagName("plate")];
+  const configuredObjects = [...settings.getElementsByTagName("object")];
+  expect(configuredObjects).toHaveLength(4);
+  expect(configuredObjects.map((object) => object.getAttribute("id"))).toEqual(["2", "3", "4", "5"]);
   expect(plates).toHaveLength(4);
   expect(plates.map((plate) => [...plate.getElementsByTagName("metadata")]
     .find((node) => node.getAttribute("key") === "plater_name")?.getAttribute("value"))).toEqual([
       "Plate 1", "Plate 2", "Plate 3", "Plate 4",
+    ]);
+  expect(plates.map((plate) => [...plate.getElementsByTagName("metadata")]
+    .find((node) => node.getAttribute("key") === "object_id")?.getAttribute("value"))).toEqual([
+      "2", "3", "4", "5",
     ]);
   for (const plate of plates) {
     expect(plate.getElementsByTagName("model_instance")).toHaveLength(1);
