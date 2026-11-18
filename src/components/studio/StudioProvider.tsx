@@ -8,7 +8,10 @@ import {
 } from "react";
 import { defaultConfig, type ModelConfig } from "@/lib/studio/model";
 import { defaultOrganizerConfig, type OrganizerConfig } from "@/lib/organizer/organizer";
-export type Project = { id: number; config: ModelConfig };
+import type { OrnamentConfig } from "@/lib/studio/ornament";
+export type Project =
+  | { id: number; kind: "ornament"; ornamentConfig: OrnamentConfig }
+  | { id: number; kind?: "medalha"; config: ModelConfig };
 const StudioContext = createContext<{
   config: ModelConfig;
   setConfig: Dispatch<SetStateAction<ModelConfig>>;
