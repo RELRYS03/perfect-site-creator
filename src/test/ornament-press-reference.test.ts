@@ -73,7 +73,7 @@ describe("geometria reconstruída da referência GigaPrint", () => {
     }
   });
 
-  it("reconstrói o êmbolo com flange e três furos-guia de 8,6 mm", () => {
+  it("reconstrói o êmbolo com furos-guia ajustados a 0,2 mm por lado", () => {
     const model = buildReferenceMalePlunger({});
     try {
       const names = meshNames(model);
