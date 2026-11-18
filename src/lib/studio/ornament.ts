@@ -69,14 +69,14 @@ function addHole(shape: THREE.Shape, points: Point[]) {
 const connectorPositions = (radius: number): Point[] => [
   [radius, 0], [0, radius], [-radius, 0], [0, -radius],
 ];
-export function createPerforatedPanel(config: Partial<OrnamentConfig>, connectorHoles = false) {
+export function createPerforatedPanel(config: Partial<OrnamentConfig>) {
   const c = validateOrnamentConfig(config);
-  const outerRadius = c.diameter / 2;
-  const innerRadius = outerRadius - c.rimWidth;
+  const innerRadius = c.diameter / 2 - c.rimWidth;
   const shape = new THREE.Shape();
   shape.absarc(0, 0, innerRadius, 0, Math.PI * 2, false);
   const holeRadius = Math.max(0.8, (c.cellSize - c.webWidth) / 2);
-  const margin = holeRadius + c.webWidth * 0.55;
+  const shapeFactor = c.pattern === "diamond" ? 1.18 : c.pattern === "square" ? Math.SQRT2 : 1;
+  const margin = holeRadius * shapeFactor + c.webWidth * 0.55;
   const points: Point[] = [];
   const rowStep = c.cellSize * (c.pattern === "honeycomb" || c.pattern === "triangle" ? 0.866 : 1);
   const colStep = c.cellSize;
@@ -100,14 +100,6 @@ export function createPerforatedPanel(config: Partial<OrnamentConfig>, connector
       const radius = c.pattern === "diamond" ? holeRadius * 1.18 : holeRadius;
       const rotation = c.pattern === "diamond" ? Math.PI / 4 : c.pattern === "triangle" ? -Math.PI / 2 : 0;
       addHole(shape, polygonPoints(x, y, radius, sides, rotation));
-    }
-  }
-  if (connectorHoles) {
-    const connectorRadius = outerRadius - c.rimWidth / 2;
-    for (const [x, y] of connectorPositions(connectorRadius)) {
-      const hole = new THREE.Path();
-      hole.absarc(x, y, c.connectorDiameter / 2 + c.connectorClearance, 0, Math.PI * 2, false);
-      shape.holes.push(hole);
     }
   }
   const geometry = new THREE.ExtrudeGeometry(shape, {
