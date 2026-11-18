@@ -740,6 +740,9 @@ export function buildPressOrnamentReference(
     group.add(buildReferenceFlatBlank(config));
   } else if (mode === "mold") {
     group.add(buildPressAssembly(config, 16));
+    group.userData["workingGapMm"] = GIGAPRINT_BALL_REFERENCE.pressGap;
+    group.userData["plungerOpenGapMm"] = 16;
+    group.userData["fullPressSeatPlaneZ"] = GIGAPRINT_BALL_REFERENCE.pressTopZ;
   } else if (mode === "mold-print") {
     const block = buildReferenceFemaleMold(config);
     const plunger = buildReferenceMalePlunger(config);
