@@ -7,6 +7,15 @@ import {
 
 const MODEL_NS = "http://schemas.microsoft.com/3dmanufacturing/core/2015/02";
 
+function crc32(bytes: Uint8Array) {
+  let crc = 0xffffffff;
+  for (const byte of bytes) {
+    crc ^= byte;
+    for (let bit = 0; bit < 8; bit++) crc = (crc >>> 1) ^ (0xedb88320 & -(crc & 1));
+  }
+  return (crc ^ 0xffffffff) >>> 0;
+}
+
 function readStoredZip(bytes: Uint8Array) {
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   const decoder = new TextDecoder();
@@ -14,6 +23,7 @@ function readStoredZip(bytes: Uint8Array) {
   let offset = 0;
   while (offset + 4 <= bytes.length && view.getUint32(offset, true) === 0x04034b50) {
     const method = view.getUint16(offset + 8, true);
+    const expectedCrc = view.getUint32(offset + 14, true);
     const size = view.getUint32(offset + 18, true);
     const nameLength = view.getUint16(offset + 26, true);
     const extraLength = view.getUint16(offset + 28, true);
@@ -22,11 +32,35 @@ function readStoredZip(bytes: Uint8Array) {
     const name = decoder.decode(bytes.subarray(nameStart, nameStart + nameLength));
     if (method !== 0) throw new Error("O teste espera entradas ZIP armazenadas sem compressão.");
     const data = bytes.subarray(dataStart, dataStart + size);
+    expect(crc32(data), "CRC inválido em " + name).toBe(expectedCrc);
     files.set(name, decoder.decode(data));
     offset = dataStart + size;
   }
+
+  const endOffset = bytes.length - 22;
+  expect(view.getUint32(endOffset, true)).toBe(0x06054b50);
+  expect(view.getUint16(endOffset + 10, true)).toBe(files.size);
+  expect(view.getUint32(endOffset + 16, true)).toBe(offset);
   return { files, size: bytes.length };
 }
+
+function expectWellFormedXml(xml: string) {
+  const stack: string[] = [];
+  const tags = xml.match(/<\/?[A-Za-z][A-Za-z0-9:_-]*(?:\s[^<>]*?)?\s*\/?>/g) ?? [];
+  for (const tag of tags) {
+    const closing = tag.startsWith("</");
+    const selfClosing = tag.endsWith("/>");
+    const name = tag.match(/^<\/?([A-Za-z][A-Za-z0-9:_-]*)/)?.[1];
+    if (!name) throw new Error("Tag XML inválida: " + tag.slice(0, 80));
+    if (closing) {
+      expect(stack.pop(), "fechamento XML inesperado: " + name).toBe(name);
+    } else if (!selfClosing) {
+      stack.push(name);
+    }
+  }
+  expect(stack, "tags XML não fechadas").toEqual([]);
+}
+
 
 function parseXml(xml: string) {
   const parsed = new DOMParser().parseFromString(xml, "application/xml");
@@ -55,51 +89,50 @@ async function verify3mf(config: typeof defaultPressOrnamentConfig, expectedTitl
   const relationships = parseXml(files.get("_rels/.rels")!);
   expect(relationships.getElementsByTagName("Relationship")).toHaveLength(1);
 
-  const model = parseXml(files.get("3D/3dmodel.model")!);
-  const modelRoot = model.documentElement;
-  expect(modelRoot.getAttribute("unit")).toBe("millimeter");
-  expect(model.getElementsByTagNameNS(MODEL_NS, "metadata")[0]?.textContent).toBe("BambuStudio-02.08.02.61");
-  const metadata = [...model.getElementsByTagNameNS(MODEL_NS, "metadata")];
-  expect(metadata.find((node) => node.getAttribute("name") === "Title")?.textContent).toBe(expectedTitle);
-  expect(metadata.find((node) => node.getAttribute("name") === "Description")?.textContent)
-    .toBe("Made with GigaPrint (gigaprint.app)");
+  const modelXml = files.get("3D/3dmodel.model")!;
+  expectWellFormedXml(modelXml);
+  expect(modelXml).toContain('<model unit="millimeter"');
+  expect(modelXml).toContain('<metadata name="Application">BambuStudio-02.08.02.61</metadata>');
+  expect(modelXml).toContain('<metadata name="Title">' + expectedTitle + '</metadata>');
+  expect(modelXml).toContain('<metadata name="Description">Made with GigaPrint (gigaprint.app)</metadata>');
+  expect(modelXml).toContain('<base name="Product filament" displaycolor="' + config.meshColor.toUpperCase() + 'FF"/>');
+  expect(modelXml).toContain('<base name="Press tooling filament" displaycolor="' + config.pressColor.toUpperCase() + 'FF"/>');
 
-  const materials = model.getElementsByTagNameNS(MODEL_NS, "basematerials");
-  expect(materials).toHaveLength(1);
-  const bases = materials[0]!.getElementsByTagNameNS(MODEL_NS, "base");
-  expect(bases).toHaveLength(2);
-  expect(bases[0]!.getAttribute("displaycolor")).toBe(config.meshColor.toUpperCase() + "FF");
-  expect(bases[1]!.getAttribute("displaycolor")).toBe(config.pressColor.toUpperCase() + "FF");
-
-  const objects = [...model.getElementsByTagNameNS(MODEL_NS, "object")];
+  const objectPattern = /<object id="(\\d+)" name="([^"]+)" type="model" pid="1" pindex="(\\d+)"><mesh><vertices>([\\s\\S]*?)<\\/vertices><triangles>([\\s\\S]*?)<\\/triangles><\\/mesh><\\/object>/g;
+  const objects = [...modelXml.matchAll(objectPattern)];
   expect(objects).toHaveLength(4);
-  expect(objects.map((node) => node.getAttribute("name"))).toEqual([
+  expect(objects.map((match) => match[2])).toEqual([
     "Ornament mesh, front half",
     "Ornament mesh, back half",
     "Press cavity block",
     "Press plunger",
   ]);
-  expect(objects.map((node) => node.getAttribute("pindex"))).toEqual(["0", "0", "1", "1"]);
+  expect(objects.map((match) => match[3])).toEqual(["0", "0", "1", "1"]);
 
   for (const object of objects) {
-    const vertices = [...object.getElementsByTagNameNS(MODEL_NS, "vertex")];
-    const triangles = object.getElementsByTagNameNS(MODEL_NS, "triangle");
-    expect(vertices.length).toBeGreaterThan(100);
-    expect(triangles.length).toBeGreaterThan(100);
-    expect(triangles.length).toBeLessThan(150_000);
-    const coords = vertices.map((vertex) => [
-      Number(vertex.getAttribute("x")),
-      Number(vertex.getAttribute("y")),
-      Number(vertex.getAttribute("z")),
-    ]);
-    const mins = [0, 1, 2].map((axis) => Math.min(...coords.map((point) => point[axis]!)));
-    const maxs = [0, 1, 2].map((axis) => Math.max(...coords.map((point) => point[axis]!)));
-    expect(mins[0]).toBeGreaterThanOrEqual(-0.001);
-    expect(mins[1]).toBeGreaterThanOrEqual(-0.001);
-    expect(mins[2]).toBeCloseTo(0, 3);
-    expect(maxs[0]).toBeLessThanOrEqual(256.001);
-    expect(maxs[1]).toBeLessThanOrEqual(256.001);
-    expect(maxs[2]).toBeLessThanOrEqual(256.001);
+    const vertexXml = object[4]!;
+    const triangleXml = object[5]!;
+    const triangleCount = (triangleXml.match(/<triangle /g) ?? []).length;
+    expect((vertexXml.match(/<vertex /g) ?? []).length).toBeGreaterThan(100);
+    expect(triangleCount).toBeGreaterThan(100);
+    expect(triangleCount).toBeLessThan(150_000);
+
+    const min = [Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY];
+    const max = [Number.NEGATIVE_INFINITY, Number.NEGATIVE_INFINITY, Number.NEGATIVE_INFINITY];
+    const vertexPattern = /<vertex x="([0-9.-]+)" y="([0-9.-]+)" z="([0-9.-]+)"\/>/g;
+    for (const vertex of vertexXml.matchAll(vertexPattern)) {
+      for (let axis = 0; axis < 3; axis++) {
+        const value = Number(vertex[axis + 1]);
+        min[axis] = Math.min(min[axis]!, value);
+        max[axis] = Math.max(max[axis]!, value);
+      }
+    }
+    expect(min[0]).toBeGreaterThanOrEqual(-0.001);
+    expect(min[1]).toBeGreaterThanOrEqual(-0.001);
+    expect(min[2]).toBeCloseTo(0, 3);
+    expect(max[0]).toBeLessThanOrEqual(256.001);
+    expect(max[1]).toBeLessThanOrEqual(256.001);
+    expect(max[2]).toBeLessThanOrEqual(256.001);
   }
 
   const settings = parseXml(files.get("Metadata/model_settings.config")!);
