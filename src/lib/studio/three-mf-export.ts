@@ -9,7 +9,9 @@ import {
 
 const BED = { x: 256, y: 256, z: 256 } as const;
 const BED_CENTER = { x: 128, y: 128 } as const;
-const MAX_TRIANGLES_PER_PART = 150_000;
+const MAX_TRIANGLES_PER_PART = 120_000;
+const MAX_TRIANGLES_TOTAL = 300_000;
+const MAX_3MF_BYTES = 28 * 1024 * 1024;
 
 type PartDefinition = {
   id: number;
@@ -369,7 +371,10 @@ export async function createBallOrnament3MF(config: PressOrnamentConfig, title =
       { name: "Metadata/model_settings.config", content: modelSettingsXml(parts) },
       { name: "Metadata/project_settings.config", content: projectSettingsJson(config.meshColor, config.pressColor) },
     ]);
-    return new Blob([zip], { type: "model/3mf" });
+    if (zip.byteLength > MAX_3MF_BYTES) {
+      throw new Error("O arquivo 3MF ultrapassou 28 MB. Reduza a resolução da malha ou o tamanho.");
+    }
+    return new Blob([zip], { type: "application/vnd.ms-package.3dmanufacturing-3dmodel+zip" });
   } finally {
     definitions.forEach(({ group }) => disposeReferenceOrnament(group));
   }
@@ -377,4 +382,8 @@ export async function createBallOrnament3MF(config: PressOrnamentConfig, title =
 
 export function get3MFPartLimit() {
   return MAX_TRIANGLES_PER_PART;
+}
+
+export function get3MFTotalLimit() {
+  return MAX_TRIANGLES_TOTAL;
 }
