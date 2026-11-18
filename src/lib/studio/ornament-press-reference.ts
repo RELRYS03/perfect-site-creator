@@ -263,7 +263,7 @@ function annulusShape(config: PressOrnamentConfig, includeConnectorHoles = true)
       shape.holes.push(circleHole(
         x * config.diameter / 100,
         y * config.diameter / 100,
-        1.6 * config.diameter / 100,
+        (1.5 + config.clearance) * config.diameter / 100,
       ));
     }
   }
@@ -279,7 +279,7 @@ function createHangingEar(config: PressOrnamentConfig, zDepth: number) {
   shape.quadraticCurveTo(5.5 * scale, 66.5 * scale, 5.5 * scale, 60.5 * scale);
   shape.lineTo(5.5 * scale, 53 * scale);
   shape.closePath();
-  shape.holes.push(circleHole(0, 61.08 * scale, 1.8 * scale));
+  shape.holes.push(circleHole(0, 61.08 * scale, config.loopDiameter * scale / 2));
   const geometry = new THREE.ExtrudeGeometry(shape, {
     depth: zDepth,
     bevelEnabled: false,
@@ -332,11 +332,14 @@ export function buildReferenceFlatBlank(input: Partial<PressOrnamentConfig> = {}
   panelMesh.receiveShadow = true;
   group.add(panelMesh);
 
-  const rimGeometry = new THREE.ExtrudeGeometry(annulusShape(config), {
-    depth: config.rimWidth,
-    bevelEnabled: false,
-    curveSegments: 96,
-  });
+  const rimGeometry = new THREE.ExtrudeGeometry(
+    annulusShape(config, config.joinMethod === "pins"),
+    {
+      depth: config.rimWidth,
+      bevelEnabled: false,
+      curveSegments: 96,
+    },
+  );
   const rim = new THREE.Mesh(rimGeometry, makeMaterial(config.meshColor, 0.55));
   rim.name = "reinforced-2p4mm-perimeter-rim";
   rim.castShadow = true;
@@ -603,7 +606,7 @@ function buildHalf(config: PressOrnamentConfig, sign: 1 | -1, addDesign = true) 
   group.add(shell);
 
   const rim = new THREE.Mesh(
-    new THREE.ExtrudeGeometry(annulusShape(config), {
+    new THREE.ExtrudeGeometry(annulusShape(config, config.joinMethod === "pins"), {
       depth: ringDepth,
       bevelEnabled: false,
       curveSegments: 96,
