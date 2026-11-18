@@ -25,7 +25,7 @@ export default function ModelScene({
   zoom: number;
   reset: number;
   wireframe: boolean;
-  buildObject?: () => THREE.Object3D;
+  buildObject?: (() => THREE.Object3D) | undefined;
   distanceScale?: number;
 }) {
   const host = useRef<HTMLDivElement>(null);
