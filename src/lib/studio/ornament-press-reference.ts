@@ -723,6 +723,7 @@ function buildAssembledOrnament(config: PressOrnamentConfig, exploded = false) {
   group.add(back);
   group.userData["halves"] = 2;
   group.userData["connectorCountPerHalf"] = 3;
+  group.userData["sourceNominalDiameterMm"] = config.diameter;
   group.userData["assembledDepthReferenceMm"] = 69.8;
   return group;
 }
@@ -753,6 +754,8 @@ export function buildPressOrnamentReference(
     group.add(buildHalf(config, 1, true));
   } else if (mode === "assembled") {
     group.add(buildAssembledOrnament(config, false));
+    group.userData["halves"] = 2;
+    group.userData["connectorCountPerHalf"] = 3;
   } else {
     const tooling = buildPressAssembly(config, 17);
     tooling.position.x = -155;
