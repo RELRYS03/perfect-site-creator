@@ -12,13 +12,15 @@ import {
 function edgeUseCounts(geometry: THREE.BufferGeometry) {
   const position = geometry.getAttribute("position");
   const index = geometry.getIndex();
+  // ExtrudeGeometry may duplicate seam vertices with tiny float32 drift.
+  // Merge coordinates within 0.001 mm before counting undirected mesh edges.
   const vertexKey = (vertex: number) =>
     [
       position.getX(vertex),
       position.getY(vertex),
       position.getZ(vertex),
     ]
-      .map((value) => Math.round(value * 100_000))
+      .map((value) => Math.round(value * 1_000))
       .join(",");
   const counts = new Map<string, number>();
   const vertexAt = (offset: number) => index ? index.getX(offset) : offset;
