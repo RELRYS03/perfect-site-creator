@@ -134,6 +134,7 @@ async function verify3mf(config: typeof defaultPressOrnamentConfig, expectedTitl
   ]);
 }
 
+// Every 3MF part is checked before ZIP packaging; failed topology blocks export.
 describe("exportador 3MF Ball ornament", () => {
   it("gera o 3MF padrão com quatro objetos e quatro placas", async () => {
     await verify3mf(defaultPressOrnamentConfig);
