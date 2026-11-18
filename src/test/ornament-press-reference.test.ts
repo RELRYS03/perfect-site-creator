@@ -63,7 +63,7 @@ describe("geometria reconstruída da referência GigaPrint", () => {
     try {
       const names = meshNames(model);
       expect(names).toContain("female-cavity-block-body");
-      expect(names).toContain("female-concave-forming-surface");
+      expect(model.userData["cavitySurfaceIntegrated"]).toBe(true);
       expect(names.filter((name) => name.startsWith("mesh-locator-pin-"))).toHaveLength(3);
       expect(names.filter((name) => name.startsWith("plunger-guide-post-"))).toHaveLength(3);
       expect(model.userData["topPlaneZ"]).toBeCloseTo(38, 2);
