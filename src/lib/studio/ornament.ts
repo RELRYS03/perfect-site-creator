@@ -119,12 +119,20 @@ export function createPerforatedPanel(config: Partial<OrnamentConfig>, connector
   geometry.computeVertexNormals();
   return { geometry, perforationCount: points.length, config: c };
 }
-function makeRim(config: OrnamentConfig) {
+function makeRim(config: OrnamentConfig, connectorHoles = false) {
   const outer = new THREE.Shape();
   outer.absarc(0, 0, config.diameter / 2, 0, Math.PI * 2, false);
   const inner = new THREE.Path();
   inner.absarc(0, 0, config.diameter / 2 - config.rimWidth, 0, Math.PI * 2, true);
   outer.holes.push(inner);
+  if (connectorHoles) {
+    const connectorRadius = config.diameter / 2 - config.rimWidth / 2;
+    for (const [x, y] of connectorPositions(connectorRadius)) {
+      const hole = new THREE.Path();
+      hole.absarc(x, y, config.connectorDiameter / 2 + config.connectorClearance, 0, Math.PI * 2, true);
+      outer.holes.push(hole);
+    }
+  }
   return new THREE.ExtrudeGeometry(outer, {
     depth: config.panelThickness,
     bevelEnabled: false,
@@ -160,10 +168,10 @@ export function buildOrnament(input: Partial<OrnamentConfig>) {
   const backAssembly = new THREE.Group();
   backAssembly.name = "rear-perforated-panel";
   const backMesh = new THREE.Mesh(back.geometry, meshMaterial);
-  backMesh.position.z = c.panelThickness + c.connectorHeight;
+  backMesh.position.z = c.panelThickness + c.connectorHeight * 0.6;
   backAssembly.add(backMesh);
-  const backRim = new THREE.Mesh(makeRim(c), designMaterial);
-  backRim.position.z = c.panelThickness + c.connectorHeight;
+  const backRim = new THREE.Mesh(makeRim(c, true), designMaterial);
+  backRim.position.z = c.panelThickness + c.connectorHeight * 0.6;
   backAssembly.add(backRim);
   group.add(backAssembly);
   if (c.includeLoop) {
@@ -178,7 +186,7 @@ export function buildOrnament(input: Partial<OrnamentConfig>) {
   group.userData = {
     perforationCount: front.perforationCount,
     triangles: countTriangles(group),
-    dimensionsMm: { x: c.diameter, y: c.diameter, z: c.panelThickness * 2 + c.connectorHeight },
+    dimensionsMm: { x: c.diameter, y: c.diameter, z: c.panelThickness * 2 + c.connectorHeight * 0.6 },
     config: c,
   };
   return group;
