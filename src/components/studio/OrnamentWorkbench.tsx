@@ -1,4 +1,5 @@
 import { useCallback, useState, type ReactNode } from "react";
+import type { Object3D } from "three";
 import { Link } from "@tanstack/react-router";
 import { Download, Save, Box, RotateCcw, Sparkles, Layers, Settings2, Palette, CircleHelp } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -6,21 +7,27 @@ import ModelScene from "./ModelScene";
 import { defaultConfig, downloadBlob } from "@/lib/studio/model";
 import { useStudio } from "./StudioProvider";
 import {
-  buildPressOrnament,
-  disposePressOrnament,
   validatePressOrnamentConfig,
   type PressOrnamentConfig,
-  type PressPreviewMode,
 } from "@/lib/studio/ornament-press";
+import {
+  buildPressOrnamentReference,
+  buildReferenceFlatBlank,
+  buildReferenceFemaleMold,
+  buildReferenceMalePlunger,
+  disposeReferenceOrnament,
+  GIGAPRINT_BALL_REFERENCE,
+  type PressReferencePreviewMode,
+} from "@/lib/studio/ornament-press-reference";
 
 const formOptions: { value: PressOrnamentConfig["form"]; label: string; note: string }[] = [
   { value: "ball", label: "Bola", note: "Esférica" },
-  { value: "egg", label: "Ovo", note: "Ovalada" },
-  { value: "bell", label: "Sino", note: "Base larga" },
-  { value: "finial", label: "Finial", note: "Ponta superior" },
-  { value: "star", label: "Estrela", note: "Contorno estrelado" },
-  { value: "heart", label: "Coração", note: "Contorno de coração" },
-  { value: "tree", label: "Árvore", note: "Contorno de árvore" },
+  { value: "egg", label: "Ovo", note: "aguardando modelo" },
+  { value: "bell", label: "Sino", note: "aguardando modelo" },
+  { value: "finial", label: "Finial", note: "aguardando modelo" },
+  { value: "star", label: "Estrela", note: "aguardando modelo" },
+  { value: "heart", label: "Coração", note: "aguardando modelo" },
+  { value: "tree", label: "Árvore", note: "aguardando modelo" },
 ];
 const patternOptions: { value: PressOrnamentConfig["pattern"]; label: string }[] = [
   { value: "honeycomb", label: "Colmeia" },
@@ -34,19 +41,19 @@ const designOptions: { value: PressOrnamentConfig["design"]; label: string }[] =
   { value: "star", label: "Estrela" },
   { value: "tree", label: "Árvore" },
   { value: "heart", label: "Coração" },
-  { value: "candy-cane", label: "Bastão doce" },
-  { value: "bell", label: "Sino" },
-  { value: "gift", label: "Presente" },
-  { value: "snowman", label: "Boneco de neve" },
   { value: "plain", label: "Sem desenho" },
 ];
-const previewOptions: { value: PressPreviewMode; label: string; detail: string }[] = [
-  { value: "system", label: "Conjunto", detail: "Molde, malha e metades" },
-  { value: "flat", label: "Malha plana", detail: "Peça antes da prensagem" },
-  { value: "mold", label: "Molde", detail: "Macho e fêmea" },
-  { value: "half", label: "Metade formada", detail: "Uma concha vazada" },
+const previewOptions: { value: PressReferencePreviewMode; label: string; detail: string }[] = [
+  { value: "system", label: "Processo completo", detail: "Molde, malha e enfeite" },
+  { value: "flat", label: "Malha plana", detail: "Imprimir duas cópias" },
+  { value: "mold", label: "Prensa aberta", detail: "Bloco e êmbolo alinhados" },
+  { value: "female-mold", label: "Bloco inferior", detail: "Cavidade e pinos-guia" },
+  { value: "male-plunger", label: "Êmbolo superior", detail: "Cúpula e furos-guia" },
+  { value: "half", label: "Metade formada", detail: "Casca após a prensagem" },
   { value: "assembled", label: "Enfeite montado", detail: "Duas metades unidas" },
 ];
+
+type StlExportPart = "mesh" | "cavity" | "plunger";
 
 function RangeControl({
   label,
@@ -79,7 +86,8 @@ function Section({ title, icon, children }: { title: string; icon: ReactNode; ch
 
 export default function OrnamentWorkbench() {
   const { pressOrnament, setPressOrnament, setProjects } = useStudio();
-  const [preview, setPreview] = useState<PressPreviewMode>("system");
+  const [preview, setPreview] = useState<PressReferencePreviewMode>("system");
+  const [stlPart, setStlPart] = useState<StlExportPart>("mesh");
   const [wireframe, setWireframe] = useState(false);
   const [reset, setReset] = useState(0);
   const [busy, setBusy] = useState(false);
@@ -88,7 +96,10 @@ export default function OrnamentWorkbench() {
   const update = <K extends keyof PressOrnamentConfig>(key: K, value: PressOrnamentConfig[K]) => {
     setPressOrnament((current) => validatePressOrnamentConfig({ ...current, [key]: value }));
   };
-  const buildPreview = useCallback(() => buildPressOrnament(config, preview), [config, preview]);
+  const buildPreview = useCallback(
+    () => buildPressOrnamentReference(config, preview),
+    [config, preview],
+  );
   const notify = (message: string) => {
     setNotice(message);
     window.setTimeout(() => setNotice(""), 3500);
@@ -114,31 +125,49 @@ export default function OrnamentWorkbench() {
 
   const exportModel = async (format: "stl" | "glb") => {
     setBusy(true);
-    let model: ReturnType<typeof buildPressOrnament> | null = null;
+    let model: Object3D | null = null;
     try {
-      model = buildPressOrnament(config, preview);
       if (format === "stl") {
+        model =
+          stlPart === "mesh"
+            ? buildReferenceFlatBlank(config)
+            : stlPart === "cavity"
+              ? buildReferenceFemaleMold(config)
+              : buildReferenceMalePlunger(config);
         const { STLExporter } = await import("three/examples/jsm/exporters/STLExporter.js");
         const data = new STLExporter().parse(model, { binary: true });
+        const fileName =
+          stlPart === "mesh"
+            ? "ExpressArte-malha-plana-imprimir-duas-vezes.stl"
+            : stlPart === "cavity"
+              ? "ExpressArte-bloco-inferior-cavidade.stl"
+              : "ExpressArte-embol o-superior.stl".replace("embol o", "embolo");
         downloadBlob(
           new Blob([new Uint8Array(data.buffer)], { type: "application/sla" }),
-          `ExpressArte-${preview}-prensagem.stl`,
+          fileName,
         );
-        notify("STL exportado. Confira escala, orientação e folgas no Bambu Studio antes de imprimir.");
+        notify(
+          stlPart === "mesh"
+            ? "Malha plana exportada. Imprima duas cópias, uma para cada metade."
+            : stlPart === "cavity"
+              ? "Bloco da cavidade exportado."
+              : "Êmbolo superior exportado. Imprima com a cúpula voltada para cima.",
+        );
       } else {
+        model = buildPressOrnamentReference(config, preview);
         const { GLTFExporter } = await import("three/examples/jsm/exporters/GLTFExporter.js");
         const result = await new GLTFExporter().parseAsync(model, { binary: true });
         if (!(result instanceof ArrayBuffer)) throw new Error("O exportador não retornou um GLB.");
         downloadBlob(
           new Blob([result], { type: "model/gltf-binary" }),
-          `ExpressArte-adorno-prensagem-${preview}.glb`,
+          `ExpressArte-referencia-GigaPrint-${preview}.glb`,
         );
-        notify("GLB colorido exportado com os componentes identificados.");
+        notify("GLB da visualização atual exportado.");
       }
     } catch (error) {
       notify(error instanceof Error ? `Falha na exportação: ${error.message}` : "Não foi possível exportar o modelo.");
     } finally {
-      if (model) disposePressOrnament(model);
+      if (model) disposeReferenceOrnament(model);
       setBusy(false);
     }
   };
@@ -156,7 +185,18 @@ export default function OrnamentWorkbench() {
         </div>
         <div className="press-header-actions">
           <Button variant="outline" onClick={saveProject}><Save size={16} /> Salvar projeto</Button>
-          <Button variant="outline" onClick={() => exportModel("stl")} disabled={busy}><Download size={16} /> Exportar STL</Button>
+          <div className="press-stl-export">
+            <label htmlFor="press-stl-part">Peça STL</label>
+            <select id="press-stl-part" value={stlPart}
+              onChange={(event) => setStlPart(event.target.value as StlExportPart)}>
+              <option value="mesh">Malha plana (imprimir 2×)</option>
+              <option value="cavity">Bloco inferior com cavidade</option>
+              <option value="plunger">Êmbolo superior</option>
+            </select>
+            <Button variant="outline" onClick={() => exportModel("stl")} disabled={busy}>
+              <Download size={16} /> Exportar peça
+            </Button>
+          </div>
           <Button onClick={() => exportModel("glb")} disabled={busy}><Box size={16} /> Exportar GLB</Button>
         </div>
       </header>
@@ -168,6 +208,8 @@ export default function OrnamentWorkbench() {
               {formOptions.map((option) => (
                 <button key={option.value} type="button"
                   className={config.form === option.value ? "press-choice selected" : "press-choice"}
+                  disabled={option.value !== "ball"}
+                  title={option.value === "ball" ? "Modelo reconstruído a partir do STL/3MF enviado" : "Aguardando um arquivo STL/3MF deste formato para reconstrução fiel"}
                   onClick={() => update("form", option.value)}>
                   <strong>{option.label}</strong><small>{option.note}</small>
                 </button>
@@ -177,8 +219,13 @@ export default function OrnamentWorkbench() {
               onChange={(value) => update("diameter", value)} />
             <RangeControl label="Profundidade da prensagem" value={config.pressDepth} min={12}
               max={config.diameter * 0.62} step={1} onChange={(value) => update("pressDepth", value)} />
-            <RangeControl label="Espessura da malha" value={config.panelThickness} min={0.8} max={2.4}
+            <RangeControl label="Espessura da malha plana" value={config.panelThickness} min={0.8} max={2.4}
               onChange={(value) => update("panelThickness", value)} />
+            <div className="press-reference-metric">
+              <span>Espessura estimada depois da prensagem</span>
+              <strong>{(config.panelThickness / (1 + config.stretchPercent / 100)).toFixed(2).replace(".", ",")} mm</strong>
+            </div>
+            <p className="press-source-note">Este arquivo de referência contém o formato Bola. Os outros formatos ficam bloqueados até recebermos os respectivos modelos de fabricação.</p>
           </Section>
 
           <Section title="2. Padrão da malha" icon={<Layers size={15} />}>
@@ -193,6 +240,8 @@ export default function OrnamentWorkbench() {
               onChange={(value) => update("holeSize", value)} />
             <RangeControl label="Largura das nervuras" value={config.ribWidth} min={0.65} max={2.8}
               onChange={(value) => update("ribWidth", value)} />
+            <RangeControl label="Alongamento na prensagem" value={config.stretchPercent} min={0} max={80} step={1}
+              onChange={(value) => update("stretchPercent", value)} />
           </Section>
 
           <Section title="3. Desenho decorativo" icon={<Sparkles size={15} />}>
@@ -227,8 +276,11 @@ export default function OrnamentWorkbench() {
                 <option value="glue">Aro plano para colagem</option>
               </select>
             </div>
-            <RangeControl label="Largura do aro de união" value={config.rimWidth} min={2.2}
-              max={Math.min(8, config.diameter / 8)} onChange={(value) => update("rimWidth", value)} />
+            <RangeControl label="Espessura do aro externo" value={config.rimWidth} min={1.2}
+              max={Math.min(4, config.diameter / 8)} onChange={(value) => update("rimWidth", value)} />
+            <div className="press-reference-metric">
+              <span>Folga de trabalho do molde (referência)</span><strong>{GIGAPRINT_BALL_REFERENCE.pressGap.toFixed(1).replace(".", ",")} mm</strong>
+            </div>
             {config.joinMethod === "pins" && (
               <RangeControl label="Folga entre pino e furo" value={config.clearance} min={0.15} max={0.6}
                 onChange={(value) => update("clearance", value)} />
@@ -257,7 +309,7 @@ export default function OrnamentWorkbench() {
           </Section>
           <div className="press-help-note">
             <CircleHelp size={16} />
-            <p>As cores servem para identificar as peças na prévia. O STL não preserva cores; use GLB para conferir a separação visual.</p>
+            <p>As cores identificam as peças na prévia. O STL não preserva cores; use GLB para conferir a separação visual. O modelo de referência foi medido a partir dos arquivos STL/3MF enviados.</p>
           </div>
         </aside>
 
@@ -284,7 +336,8 @@ export default function OrnamentWorkbench() {
           </div>
           <div className="press-canvas">
             <ModelScene config={defaultConfig} view={preview === "flat" ? "2d" : "3d"}
-              zoom={100} reset={reset} wireframe={wireframe} buildObject={buildPreview} distanceScale={preview === "system" ? 2.5 : 1.6} />
+              zoom={100} reset={reset} wireframe={wireframe} buildObject={buildPreview}
+              distanceScale={preview === "system" ? 3.6 : preview === "mold" ? 1.9 : 1.45} />
           </div>
           <div className="press-preview-footer">
             <span><i /> {config.diameter} mm · {config.form} · {config.pattern}</span>
@@ -298,7 +351,7 @@ export default function OrnamentWorkbench() {
           </div>
           <div className="press-manufacturing-warning">
             <strong>Validação antes de fabricar</strong>
-            <p>Esta é uma prévia paramétrica inicial. A geometria visual não comprova resistência ao calor, espessura adequada para o material aquecido, tolerância mecânica ou encaixe perfeito. Confira cada componente no Bambu Studio e faça um teste de impressão antes de produzir em série.</p>
+            <p>Geometria reconstruída a partir de ball_ornament.3mf e dos três STL enviados. As medidas de referência são aproximadas em alguns pontos arredondados; valide cada exportação no Bambu Studio e faça um teste de prensagem antes de produção. A prévia não comprova resistência térmica do PLA nem substitui teste físico.</p>
           </div>
         </section>
       </div>
