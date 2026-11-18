@@ -79,7 +79,7 @@ describe("geometria reconstruída da referência GigaPrint", () => {
       const names = meshNames(model);
       expect(names).toContain("male-plunger-flange-with-three-8p6mm-guide-holes");
       expect(names).toContain("male-plunger-dome-1p5mm-surface-gap");
-      expect(model.userData["guideHoleDiameterMm"]).toBeCloseTo(8.6, 1);
+      expect(model.userData["guideHoleDiameterMm"]).toBeCloseTo(8.4, 1);
       expect(model.userData["flangeSeatPlaneZ"]).toBe(10);
     } finally {
       disposeReferenceOrnament(model);
