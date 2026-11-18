@@ -582,7 +582,7 @@ export default function StudioApp({ page = "studio" }: { page?: StudioPage }) {
                       aria-pressed={editorMode === "ornament"}
                       onClick={() => setEditorMode("ornament")}
                     >
-                      Adorno perfurado
+                      Painel perfurado (legado)
                     </Button>
                   </div>
                 </div>
