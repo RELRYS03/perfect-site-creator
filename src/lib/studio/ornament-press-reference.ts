@@ -65,6 +65,36 @@ export const GIGAPRINT_BALL_REFERENCE = {
   ] as const,
 };
 
+const SOURCE_BLOCK_OUTLINE_RADII: readonly number[] = [
+  63.782, 63.781, 63.781, 63.786, 63.963, 64.414, 65.153, 66.196,
+  67.567, 69.299, 71.435, 74.031, 75.277, 74.099, 72.315, 70.912,
+  69.856, 69.122, 68.695, 68.565, 68.729, 69.191, 69.961, 71.055,
+  71.878, 71.056, 69.962, 69.192, 68.730, 68.566, 68.696, 69.123,
+  69.856, 70.913, 72.315, 74.099, 75.276, 74.031, 71.437, 69.301,
+  67.570, 66.200, 65.158, 64.419, 63.969, 63.795, 63.795, 63.785,
+  63.782, 63.781, 63.780, 63.786, 63.790, 63.797, 63.791, 63.786,
+  63.777, 63.781, 63.793, 63.797, 63.795, 63.783, 63.788, 63.788,
+  63.966, 64.418, 65.158, 66.201, 67.573, 69.306, 71.444, 74.026,
+  75.267, 74.027, 71.445, 69.308, 67.576, 66.205, 65.162, 64.423,
+  63.971, 63.797, 63.792, 63.796, 63.793, 63.782, 63.788, 63.787,
+  63.797, 63.795, 63.785, 63.778, 63.786, 63.794, 63.795, 63.785,
+];
+
+function createSourceToolingOutline(width: number, height: number, scale: number) {
+  const xScale = width / 127.58;
+  const yScale = height / 147.145;
+  const shape = new THREE.Shape();
+  SOURCE_BLOCK_OUTLINE_RADII.forEach((radius, index) => {
+    const angle = index * Math.PI * 2 / SOURCE_BLOCK_OUTLINE_RADII.length;
+    const x = radius * Math.cos(angle) * xScale * scale;
+    const y = radius * Math.sin(angle) * yScale * scale;
+    if (index === 0) shape.moveTo(x, y);
+    else shape.lineTo(x, y);
+  });
+  shape.closePath();
+  return shape;
+}
+
 const CAVITY_PROFILE: readonly (readonly [number, number])[] = [
   [0, 3], [2, 3.021], [4, 3.115], [6, 3.235], [8, 3.398],
   [10, 3.683], [12, 3.95], [14, 4.262], [16, 4.753], [18, 5.179],
@@ -378,37 +408,10 @@ export function buildReferenceFlatBlank(input: Partial<PressOrnamentConfig> = {}
   return group;
 }
 
-function rayPolygonRadius(contour: THREE.Vector2[], angle: number) {
-  const dx = Math.cos(angle);
-  const dy = Math.sin(angle);
-  let nearest = Number.POSITIVE_INFINITY;
-  for (let index = 0; index < contour.length; index++) {
-    const a = contour[index]!;
-    const b = contour[(index + 1) % contour.length]!;
-    const vx = b.x - a.x;
-    const vy = b.y - a.y;
-    const denominator = dx * vy - dy * vx;
-    if (Math.abs(denominator) < 1e-9) continue;
-    const t = (a.x * vy - a.y * vx) / denominator;
-    const u = (a.x * dy - a.y * dx) / denominator;
-    if (t > 0 && u >= -1e-8 && u <= 1 + 1e-8) nearest = Math.min(nearest, t);
-  }
-  if (!Number.isFinite(nearest)) {
-    throw new Error("Não foi possível obter o contorno radial do bloco de prensagem.");
-  }
-  return nearest;
-}
-
 function createMoldBlockBase(config: PressOrnamentConfig, topZ: number, scale: number) {
-  const outline = roundedTriangleShape(
-    127.58 * scale,
-    147.145 * scale,
-    11 * scale,
-    -1.6945 * scale,
-  ).extractPoints(96).shape;
-  const segments = 96;
+  const segments = SOURCE_BLOCK_OUTLINE_RADII.length;
   const angles = Array.from({ length: segments }, (_, index) => index * Math.PI * 2 / segments);
-  const outerRadii = angles.map((angle) => rayPolygonRadius(outline, angle));
+  const outerRadii = SOURCE_BLOCK_OUTLINE_RADII.map((radius) => radius * scale);
   const innerRadius = 50 * scale;
   if (Math.min(...outerRadii) <= innerRadius + 1) {
     throw new Error("O bloco inferior ficou fino demais ao redor da cavidade.");
@@ -569,7 +572,7 @@ export function buildReferenceFemaleMold(input: Partial<PressOrnamentConfig> = {
 }
 
 function createPlungerFlange(config: PressOrnamentConfig, scale: number, plateDepth: number) {
-  const shape = roundedTriangleShape(127.364 * scale, 147.144 * scale, 11 * scale, -1.6945 * scale);
+  const shape = createSourceToolingOutline(127.364, 147.144, scale);
   GIGAPRINT_BALL_REFERENCE.guidePostCenters.forEach(([x, y]) => {
     shape.holes.push(circleHole(x * scale, y * scale, (4 + config.clearance) * scale, false));
   });
