@@ -141,7 +141,7 @@ export default function OrnamentWorkbench() {
             ? "ExpressArte-malha-plana-imprimir-duas-vezes.stl"
             : stlPart === "cavity"
               ? "ExpressArte-bloco-inferior-cavidade.stl"
-              : "ExpressArte-embol o-superior.stl".replace("embol o", "embolo");
+              : "ExpressArte-embolo-superior.stl";
         downloadBlob(
           new Blob([new Uint8Array(data.buffer)], { type: "application/sla" }),
           fileName,
