@@ -71,7 +71,6 @@ const titles: Record<StudioPage, [string, string]> = {
   mesh: ["Mesh Doctor", "Inspeção de arquivos STL para impressão 3D."],
   comunidade: ["Comunidade", "Um espaço para quem transforma ideias em arte."],
 };
-type Project = { id: number; config: ModelConfig };
 function RangeField({
   label,
   value,
@@ -189,11 +188,15 @@ export default function StudioApp({ page = "studio" }: { page?: StudioPage }) {
         type: "perforated-ornament",
         config: ornamentConfig,
       };
+      setProjects((p) => [
+        ...p,
+        { id: Date.now(), kind: "ornament", ornamentConfig: { ...ornamentConfig } },
+      ]);
       downloadBlob(
         new Blob([JSON.stringify(project, null, 2)], { type: "application/json" }),
         "PerfectSiteCreator-adorno.json",
       );
-      notify("Configuração do adorno salva em JSON.");
+      notify("Adorno salvo em Meus projetos e exportado em JSON.");
       return;
     }
     setProjects((p) => [...p, { id: Date.now(), config: { ...config } }]);
@@ -887,7 +890,25 @@ export default function StudioApp({ page = "studio" }: { page?: StudioPage }) {
                   const file = e.target.files?.[0];
                   if (!file) return;
                   try {
-                    const data = JSON.parse(await file.text());
+                    const parsed: unknown = JSON.parse(await file.text());
+                    if (
+                      parsed &&
+                      typeof parsed === "object" &&
+                      "type" in parsed &&
+                      parsed.type === "perforated-ornament" &&
+                      "config" in parsed
+                    ) {
+                      const importedOrnament = validateOrnamentConfig(
+                        parsed.config as Partial<OrnamentConfig>,
+                      );
+                      setProjects((p) => [
+                        ...p,
+                        { id: Date.now(), kind: "ornament", ornamentConfig: importedOrnament },
+                      ]);
+                      notify("Configuração de adorno importada.");
+                      return;
+                    }
+                    const data = parsed as ModelConfig;
                     if (
                       !shapes.some((s) => s.kind === data.shape) ||
                       typeof data.name !== "string" ||
@@ -906,7 +927,7 @@ export default function StudioApp({ page = "studio" }: { page?: StudioPage }) {
                       typeof data.border !== "boolean"
                     )
                       throw new Error();
-                    setProjects((p) => [...p, { id: Date.now(), config: data }]);
+                    setProjects((p) => [...p, { id: Date.now(), kind: "medalha", config: data }]);
                     notify("Projeto importado.");
                   } catch {
                     notify("Este arquivo não contém um projeto ExpressArte válido.");
@@ -934,13 +955,27 @@ export default function StudioApp({ page = "studio" }: { page?: StudioPage }) {
               projects.map((p) => (
                 <div className="project-row" key={p.id}>
                   <div>
-                    <h3>{p.config.name}</h3>
+                    <h3>{p.kind === "ornament" ? "Adorno perfurado" : p.config.name}</h3>
                     <p>
-                      {p.config.diameter} mm · {shapes.find((s) => s.kind === p.config.shape)?.name}
+                      {p.kind === "ornament"
+                        ? `${p.ornamentConfig.diameter} mm · ${p.ornamentConfig.pattern} · ${p.ornamentConfig.cellSize} mm de célula`
+                        : `${p.config.diameter} mm · ${shapes.find((s) => s.kind === p.config.shape)?.name}`}
                     </p>
                   </div>
                   <div className="flex gap-2">
-                    <Button asChild variant="outline" onClick={() => setConfig(p.config)}>
+                    <Button
+                      asChild
+                      variant="outline"
+                      onClick={() => {
+                        if (p.kind === "ornament") {
+                          setOrnamentConfig({ ...p.ornamentConfig });
+                          setEditorMode("ornament");
+                        } else {
+                          setConfig(p.config);
+                          setEditorMode("medalha");
+                        }
+                      }}
+                    >
                       <Link to="/">Abrir</Link>
                     </Button>
                     <Button
