@@ -30,6 +30,47 @@ function safeNumber(value: number) {
   return Math.abs(value) < 0.0005 ? 0 : value;
 }
 
+function assertWatertightChildMesh(
+  mesh: THREE.Mesh,
+  partName: string,
+  matrix: THREE.Matrix4,
+) {
+  const geometry = mesh.geometry;
+  const position = geometry.getAttribute("position");
+  const index = geometry.getIndex();
+  const count = index ? index.count : position.count;
+  const e = matrix.elements;
+  const keyAt = (vertex: number) => {
+    const x = position.getX(vertex), y = position.getY(vertex), z = position.getZ(vertex);
+    const tx = e[0]! * x + e[4]! * y + e[8]! * z + e[12]!;
+    const ty = e[1]! * x + e[5]! * y + e[9]! * z + e[13]!;
+    const tz = e[2]! * x + e[6]! * y + e[10]! * z + e[14]!;
+    return [tx, ty, tz].map((value) => Math.round(value * 1000)).join(",");
+  };
+  const edgeUses = new Map<string, number>();
+  for (let offset = 0; offset < count; offset += 3) {
+    const ids = [
+      index ? index.getX(offset) : offset,
+      index ? index.getX(offset + 1) : offset + 1,
+      index ? index.getX(offset + 2) : offset + 2,
+    ];
+    const keys = ids.map(keyAt);
+    for (let edge = 0; edge < 3; edge++) {
+      const a = keys[edge]!;
+      const b = keys[(edge + 1) % 3]!;
+      const key = a < b ? a + "|" + b : b + "|" + a;
+      edgeUses.set(key, (edgeUses.get(key) ?? 0) + 1);
+    }
+  }
+  const badEdges = [...edgeUses.values()].filter((uses) => uses !== 2).length;
+  if (badEdges) {
+    throw new Error(
+      partName + " / " + mesh.name + ": malha não-manifold (" +
+      badEdges + " arestas abertas ou compartilhadas incorretamente).",
+    );
+  }
+}
+
 function collectPartMesh(group: THREE.Group, partName: string): MeshData {
   group.updateMatrixWorld(true);
   const vertices: number[] = [];
@@ -46,6 +87,7 @@ function collectPartMesh(group: THREE.Group, partName: string): MeshData {
     const position = geometry.getAttribute("position");
     if (!position || position.count < 3) return;
     meshCount += 1;
+    assertWatertightChildMesh(child, partName, child.matrixWorld);
 
     const base = vertices.length / 3;
     const matrix = child.matrixWorld;
