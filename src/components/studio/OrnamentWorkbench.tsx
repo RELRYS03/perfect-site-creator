@@ -45,7 +45,7 @@ const designOptions: { value: PressOrnamentConfig["design"]; label: string }[] =
 ];
 const previewOptions: { value: PressReferencePreviewMode; label: string; detail: string }[] = [
   { value: "system", label: "Processo completo", detail: "Molde, malha e enfeite" },
-  { value: "flat", label: "Malha plana", detail: "Imprimir duas cópias" },
+  { value: "flat", label: "Malha plana", detail: "Imprimir duas cópias iguais" },
   { value: "mold", label: "Prensa aberta", detail: "Bloco e êmbolo alinhados" },
   { value: "female-mold", label: "Bloco inferior", detail: "Cavidade e pinos-guia" },
   { value: "male-plunger", label: "Êmbolo superior", detail: "Cúpula e furos-guia" },
@@ -282,7 +282,7 @@ export default function OrnamentWorkbench() {
               <span>Folga de trabalho do molde (referência)</span><strong>{GIGAPRINT_BALL_REFERENCE.pressGap.toFixed(1).replace(".", ",")} mm</strong>
             </div>
             {config.joinMethod === "pins" && (
-              <RangeControl label="Folga entre pino e furo" value={config.clearance} min={0.15} max={0.6}
+              <RangeControl label="Folga entre pino e furo" value={config.clearance} min={0.1} max={0.6}
                 onChange={(value) => update("clearance", value)} />
             )}
             <label className="press-check-row">
@@ -291,7 +291,7 @@ export default function OrnamentWorkbench() {
               Incluir argola para pendurar
             </label>
             {config.includeLoop && (
-              <RangeControl label="Diâmetro da argola" value={config.loopDiameter} min={3} max={10}
+              <RangeControl label="Diâmetro do furo da argola" value={config.loopDiameter} min={3} max={10}
                 onChange={(value) => update("loopDiameter", value)} />
             )}
           </Section>
