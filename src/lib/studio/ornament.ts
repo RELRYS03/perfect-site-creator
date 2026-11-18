@@ -62,7 +62,7 @@ function polygonPoints(x: number, y: number, radius: number, sides: number, rota
 }
 function addHole(shape: THREE.Shape, points: Point[]) {
   const hole = new THREE.Path();
-  points.forEach(([x, y], i) => (i ? hole.lineTo(x, y) : hole.moveTo(x, y)));
+  [...points].reverse().forEach(([x, y], i) => (i ? hole.lineTo(x, y) : hole.moveTo(x, y)));
   hole.closePath();
   shape.holes.push(hole);
 }
@@ -93,7 +93,7 @@ export function createPerforatedPanel(config: Partial<OrnamentConfig>) {
   for (const [x, y] of points) {
     if (c.pattern === "round") {
       const hole = new THREE.Path();
-      hole.absarc(x, y, holeRadius, 0, Math.PI * 2, false);
+      hole.absarc(x, y, holeRadius, 0, Math.PI * 2, true);
       shape.holes.push(hole);
     } else {
       const sides = c.pattern === "square" ? 4 : c.pattern === "triangle" ? 3 : 6;
