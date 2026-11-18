@@ -71,6 +71,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/adornos': typeof AdornosRoute
   '/calculadora': typeof CalculadoraRoute
   '/comunidade': typeof ComunidadeRoute
   '/formas': typeof FormasRoute
@@ -81,6 +82,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/adornos': typeof AdornosRoute
   '/calculadora': typeof CalculadoraRoute
   '/comunidade': typeof ComunidadeRoute
   '/formas': typeof FormasRoute
@@ -102,6 +104,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/adornos'
     | '/calculadora'
     | '/comunidade'
     | '/formas'
@@ -111,6 +114,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/adornos'
     | '/calculadora'
     | '/comunidade'
     | '/formas'
