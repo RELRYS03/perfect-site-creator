@@ -61,6 +61,7 @@ function RangeControl({
   min,
   max,
   step = 0.1,
+  unit = "mm",
   onChange,
 }: {
   label: string;
@@ -68,14 +69,15 @@ function RangeControl({
   min: number;
   max: number;
   step?: number;
+  unit?: string;
   onChange: (value: number) => void;
 }) {
   return (
     <label className="press-range">
-      <span><b>{label}</b><output>{Number(value.toFixed(2)).toLocaleString("pt-BR")} mm</output></span>
+      <span><b>{label}</b><output>{Number(value.toFixed(2)).toLocaleString("pt-BR")} {unit}</output></span>
       <input type="range" min={min} max={max} step={step} value={value}
         onChange={(event) => onChange(Number(event.target.value))} />
-      <small><span>{min} mm</span><span>{max} mm</span></small>
+      <small><span>{min} {unit}</span><span>{max} {unit}</span></small>
     </label>
   );
 }
@@ -240,7 +242,7 @@ export default function OrnamentWorkbench() {
               onChange={(value) => update("holeSize", value)} />
             <RangeControl label="Largura das nervuras" value={config.ribWidth} min={0.65} max={2.8}
               onChange={(value) => update("ribWidth", value)} />
-            <RangeControl label="Alongamento na prensagem" value={config.stretchPercent} min={0} max={80} step={1}
+            <RangeControl label="Alongamento na prensagem" value={config.stretchPercent} min={0} max={80} step={1} unit="%"
               onChange={(value) => update("stretchPercent", value)} />
           </Section>
 
