@@ -28,6 +28,7 @@ export type PressOrnamentConfig = {
   designWidth: number;
   designHeight: number;
   backDesign: boolean;
+  stretchPercent: number;
   joinMethod: PressJoinMethod;
   clearance: number;
   includeLoop: boolean;
@@ -39,24 +40,25 @@ export type PressOrnamentConfig = {
 
 export const defaultPressOrnamentConfig: PressOrnamentConfig = {
   form: "ball",
-  diameter: 80,
-  pressDepth: 38,
+  diameter: 100,
+  pressDepth: 32.5,
   panelThickness: 1.2,
-  rimWidth: 3.8,
+  rimWidth: 2.4,
   pattern: "honeycomb",
-  holeSize: 5.2,
+  holeSize: 5,
   ribWidth: 1.2,
-  design: "snowflake",
+  design: "plain",
   designWidth: 28,
   designHeight: 0.8,
   backDesign: false,
+  stretchPercent: 53,
   joinMethod: "pins",
   clearance: 0.3,
   includeLoop: true,
   loopDiameter: 5,
-  meshColor: "#c91636",
-  designColor: "#f4f3e8",
-  pressColor: "#258052",
+  meshColor: "#F2A0B5",
+  designColor: "#F2A0B5",
+  pressColor: "#2E8B57",
 };
 
 const clamp = (value: number, min: number, max: number) =>
@@ -92,6 +94,7 @@ export function validatePressOrnamentConfig(
     designWidth: clamp(c.designWidth, 12, diameter * 0.62),
     designHeight: clamp(c.designHeight, 0.25, 1.8),
     backDesign: Boolean(c.backDesign),
+    stretchPercent: clamp(c.stretchPercent, 0, 80),
     joinMethod: valid(c.joinMethod, ["pins", "glue"], "pins"),
     clearance: clamp(c.clearance, 0.15, 0.6),
     includeLoop: Boolean(c.includeLoop),
