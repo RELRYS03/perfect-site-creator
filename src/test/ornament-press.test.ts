@@ -94,6 +94,32 @@ describe("ornamento de prensagem", () => {
     }
   });
 
+  it("separa os aros de junção e dimensiona os pinos pela espessura da chapa", () => {
+    const config = { ...defaultPressOrnamentConfig, panelThickness: 1.4, clearance: 0.3 };
+    const model = buildPressOrnament(config, "assembled");
+    try {
+      let maleRim: THREE.Mesh | null = null;
+      let femaleRim: THREE.Mesh | null = null;
+      let pin: THREE.Mesh | null = null;
+      model.traverse((node) => {
+        if (!(node instanceof THREE.Mesh)) return;
+        if (node.name === "male-joining-rim") maleRim = node;
+        if (node.name === "female-joining-rim") femaleRim = node;
+        if (node.name === "joining-pin-1") pin = node;
+      });
+      expect(maleRim).not.toBeNull();
+      expect(femaleRim).not.toBeNull();
+      expect(pin).not.toBeNull();
+      expect(maleRim!.position.z).toBeCloseTo(config.panelThickness / 2, 5);
+      expect(femaleRim!.position.z).toBeCloseTo(-config.panelThickness / 2, 5);
+      expect(pin!.geometry.boundingBox).not.toBeNull();
+      expect(pin!.geometry.boundingBox!.max.y - pin!.geometry.boundingBox!.min.y)
+        .toBeCloseTo(config.panelThickness + config.clearance * 2, 4);
+    } finally {
+      disposePressOrnament(model);
+    }
+  });
+
   it("mantém a argola opcional e os componentes identificados", () => {
     const model = buildPressOrnament({ includeLoop: false }, "assembled");
     try {
