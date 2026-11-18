@@ -45,9 +45,9 @@ describe("ornamento de prensagem", () => {
     });
     expect(config.diameter).toBe(140);
     expect(config.pressDepth).toBeLessThanOrEqual(config.diameter * 0.62);
-    expect(config.panelThickness).toBe(0.8);
+    expect(config.panelThickness).toBe(1.2);
     expect(config.clearance).toBe(0.6);
-    expect(config.ribWidth).toBe(0.65);
+    expect(config.ribWidth).toBe(1.2);
   });
 
   it.each(["honeycomb", "diamond", "round", "square", "triangle"] as const)(
