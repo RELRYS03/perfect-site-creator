@@ -118,11 +118,15 @@ async function verify3mf(config: typeof defaultPressOrnamentConfig, expectedTitl
     expect(triangleCount).toBeLessThan(150_000);
 
     const vertexCount = (vertexXml.match(/<vertex /g) ?? []).length;
-    const faceIndexPattern = /<triangle v1="(\\d+)" v2="(\\d+)" v3="(\\d+)"\\/>/g;
-    for (const face of triangleXml.matchAll(faceIndexPattern)) {
-      expect(Number(face[1])).toBeLessThan(vertexCount);
-      expect(Number(face[2])).toBeLessThan(vertexCount);
-      expect(Number(face[3])).toBeLessThan(vertexCount);
+    const faceChunks = triangleXml.split("<triangle ").slice(1);
+    expect(faceChunks).toHaveLength(triangleCount);
+    for (const face of faceChunks) {
+      const ids = ["v1", "v2", "v3"].map((key) => {
+        const match = face.match(new RegExp(key + '="([0-9]+)"'));
+        if (!match) throw new Error("Índice de vértice ausente em face 3MF.");
+        return Number(match[1]);
+      });
+      for (const id of ids) expect(id).toBeLessThan(vertexCount);
     }
 
     const min = [Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY];
