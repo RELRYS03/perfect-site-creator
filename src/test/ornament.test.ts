@@ -66,7 +66,7 @@ describe("parametric press-fit ornament", () => {
       try {
         expect(perforationCount).toBeGreaterThan(10);
         expect(geometry.getAttribute("position").count).toBeGreaterThan(100);
-        expect(geometry.userData.pattern).toBe(pattern);
+        expect(geometry.userData["pattern"]).toBe(pattern);
         expect(geometry.boundingBox).not.toBeNull();
         expect(geometry.boundingBox!.max.z - geometry.boundingBox!.min.z).toBeCloseTo(
           defaultOrnamentConfig.panelThickness,
@@ -94,7 +94,7 @@ describe("parametric press-fit ornament", () => {
       expect(names.filter((name) => name.startsWith("press-pin-"))).toHaveLength(4);
       expect(names).toContain("hanging-loop");
       expect(countTriangles(model)).toBeGreaterThan(1000);
-      expect(model.userData.perforationCount).toBeGreaterThan(10);
+      expect(model.userData["perforationCount"]).toBeGreaterThan(10);
       for (const mesh of meshes) expectClosedSolid(mesh.geometry);
     } finally {
       disposeOrnament(model);
@@ -110,9 +110,9 @@ describe("parametric press-fit ornament", () => {
       expect(bounds.max.x).toBeLessThanOrEqual(45.01);
       expect(bounds.min.y).toBeGreaterThanOrEqual(-45.01);
       expect(bounds.max.y).toBeGreaterThan(45);
-      expect(model.userData.dimensionsMm.x).toBeCloseTo(size.x, 2);
-      expect(model.userData.dimensionsMm.y).toBeCloseTo(size.y, 2);
-      expect(model.userData.dimensionsMm.z).toBeCloseTo(size.z, 2);
+      expect(model.userData["dimensionsMm"].x).toBeCloseTo(size.x, 2);
+      expect(model.userData["dimensionsMm"].y).toBeCloseTo(size.y, 2);
+      expect(model.userData["dimensionsMm"].z).toBeCloseTo(size.z, 2);
     } finally {
       disposeOrnament(model);
     }
