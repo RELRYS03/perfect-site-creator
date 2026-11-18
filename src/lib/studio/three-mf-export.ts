@@ -64,11 +64,13 @@ function assertWatertightChildMesh(
       edgeUses.set(key, (edgeUses.get(key) ?? 0) + 1);
     }
   }
-  const badEdges = [...edgeUses.values()].filter((uses) => uses !== 2).length;
+  const bad = [...edgeUses.entries()].filter(([, uses]) => uses !== 2);
+  const badEdges = bad.length;
   if (badEdges) {
     throw new Error(
       partName + " / " + mesh.name + ": malha não-manifold (" +
-      badEdges + " arestas abertas ou compartilhadas incorretamente).",
+      badEdges + " arestas abertas ou compartilhadas incorretamente). " +
+      "Amostra: " + bad.slice(0, 8).map(([edge, uses]) => edge + " [" + uses + "]").join("; "),
     );
   }
 }
