@@ -147,7 +147,7 @@ export function buildOrnament(input: Partial<OrnamentConfig>) {
   const designMaterial = new THREE.MeshStandardMaterial({ color: c.designColor, roughness: 0.5 });
   const pressMaterial = new THREE.MeshStandardMaterial({ color: c.pressColor, roughness: 0.55 });
   const front = createPerforatedPanel(c);
-  const back = createPerforatedPanel(c, true);
+  const back = createPerforatedPanel(c);
   const frontMesh = new THREE.Mesh(front.geometry, meshMaterial);
   frontMesh.name = "front-perforated-panel";
   group.add(frontMesh);
