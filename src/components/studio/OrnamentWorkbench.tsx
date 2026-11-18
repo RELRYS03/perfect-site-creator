@@ -123,7 +123,10 @@ export default function OrnamentWorkbench() {
   const export3mf = async () => {
     setBusy(true);
     try {
-      const file = await createBallOrnament3MF(config, "Ball ornament");
+      const bytes = createBallOrnament3MF(config, "Ball ornament");
+      const file = new Blob([new Uint8Array(bytes).buffer as ArrayBuffer], {
+        type: "application/vnd.ms-package.3dmanufacturing-3dmodel+zip",
+      });
       downloadBlob(file, "ExpressArte-Ball-ornament.3mf");
       notify("3MF gerado com 4 peças separadas em 4 placas. Abra no Bambu Studio para conferir o fatiamento.");
     } catch (error) {
