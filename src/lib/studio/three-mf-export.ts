@@ -51,6 +51,7 @@ function assertWatertightChildMesh(
   };
   const edgeUses = new Map<string, number>();
   let signedVolume = 0;
+  const windingSign = matrix.determinant() < 0 ? -1 : 1;
   const aPoint = new THREE.Vector3();
   const bPoint = new THREE.Vector3();
   const cPoint = new THREE.Vector3();
@@ -63,8 +64,7 @@ function assertWatertightChildMesh(
     aPoint.fromBufferAttribute(position, ids[0]!).applyMatrix4(matrix);
     bPoint.fromBufferAttribute(position, ids[1]!).applyMatrix4(matrix);
     cPoint.fromBufferAttribute(position, ids[2]!).applyMatrix4(matrix);
-    if (matrix.determinant() < 0) [bPoint, cPoint] = [cPoint, bPoint];
-    signedVolume += aPoint.dot(bPoint.clone().cross(cPoint)) / 6;
+    signedVolume += windingSign * aPoint.dot(bPoint.clone().cross(cPoint)) / 6;
     const keys = ids.map(keyAt);
     for (let edge = 0; edge < 3; edge++) {
       const a = keys[edge]!;
