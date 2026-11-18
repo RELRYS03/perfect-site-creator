@@ -379,16 +379,17 @@ function createProfileVolume(
   profile: readonly (readonly [number, number])[],
   bottomZ: number,
   topRimZ: number,
-  radialScale: number,
 ) {
+  // Profile coordinates already contain the selected diameter/depth scaling.
+  const outerRadius = profile[profile.length - 1]![0];
   const points: THREE.Vector2[] = [
     new THREE.Vector2(0, bottomZ),
-    new THREE.Vector2(50 * radialScale, bottomZ),
-    new THREE.Vector2(50 * radialScale, topRimZ),
+    new THREE.Vector2(outerRadius, bottomZ),
+    new THREE.Vector2(outerRadius, topRimZ),
   ];
   for (let index = profile.length - 1; index >= 0; index--) {
     const [r, z] = profile[index]!;
-    points.push(new THREE.Vector2(r * radialScale, z));
+    points.push(new THREE.Vector2(r, z));
   }
   points.push(new THREE.Vector2(0, bottomZ));
   const geometry = new THREE.LatheGeometry(points, 128);
@@ -425,7 +426,7 @@ export function buildReferenceFemaleMold(input: Partial<PressOrnamentConfig> = {
 
   const cavityProfile = CAVITY_PROFILE.map(([r, z]) => [r * scale, z * depthScale] as const);
   // The input profile is already scaled into model millimetres.
-  const bowlGeometry = createProfileVolume(cavityProfile, 0, topZ, 1);
+  const bowlGeometry = createProfileVolume(cavityProfile, 0, topZ);
   const bowl = new THREE.Mesh(bowlGeometry, makeMaterial(config.pressColor, 0.66));
   bowl.name = "female-concave-forming-surface";
   bowl.castShadow = true;
