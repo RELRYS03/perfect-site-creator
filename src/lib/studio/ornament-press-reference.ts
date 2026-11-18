@@ -496,7 +496,7 @@ function createMoldBlockBase(config: PressOrnamentConfig, topZ: number, scale: n
       const center = previousRing[0]!;
       for (let index = 0; index < segments; index++) {
         const next = (index + 1) % segments;
-        faces.push(center, currentRing[next]!, currentRing[index]!);
+        faces.push(center, currentRing[index]!, currentRing[next]!);
       }
     } else if (previousRing.length > 1 && currentRing.length > 1) {
       for (let index = 0; index < segments; index++) {
@@ -505,7 +505,7 @@ function createMoldBlockBase(config: PressOrnamentConfig, topZ: number, scale: n
         const b = previousRing[next]!;
         const d = currentRing[index]!;
         const cc = currentRing[next]!;
-        faces.push(a, b, cc, a, cc, d);
+        faces.push(a, d, cc, a, cc, b);
       }
     }
     previousRing = currentRing;
