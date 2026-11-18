@@ -19,6 +19,7 @@ export default function ModelScene({
   wireframe,
   buildObject,
   distanceScale = 1,
+  interiorPreview = "none",
 }: {
   config: ModelConfig;
   view: string;
@@ -27,6 +28,7 @@ export default function ModelScene({
   wireframe: boolean;
   buildObject?: (() => THREE.Object3D) | undefined;
   distanceScale?: number;
+  interiorPreview?: "none" | "half" | "assembled";
 }) {
   const host = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<{
@@ -150,14 +152,33 @@ export default function ModelScene({
     if (!current) return;
     const { camera, controls } = current;
     const s = distanceScale;
-    controls.maxDistance = 500 * s;
-    if (view === "2d") camera.position.set(0, 240 * s, 1);
-    else camera.position.set(110 * s, 135 * s, 165 * s);
+    if (interiorPreview !== "none" && view !== "2d") {
+      // Inspect the real hollow cavity from inside. The mesh and its holes are
+      // unchanged; only the camera moves into the empty volume.
+      controls.minDistance = 1.5;
+      controls.maxDistance = 180 * s;
+      controls.maxPolarAngle = Math.PI * 0.96;
+      controls.minPolarAngle = 0.04;
+      if (interiorPreview === "half") {
+        camera.position.set(0, 4 * s, 2 * s);
+        controls.target.set(0, 20 * s, 32 * s);
+      } else {
+        camera.position.set(0, 0, 0);
+        controls.target.set(0, 20 * s, 32 * s);
+      }
+    } else {
+      controls.minDistance = 80;
+      controls.maxDistance = 500 * s;
+      controls.maxPolarAngle = Math.PI * 0.49;
+      controls.minPolarAngle = 0;
+      if (view === "2d") camera.position.set(0, 240 * s, 1);
+      else camera.position.set(110 * s, 135 * s, 165 * s);
+      controls.target.set(0, 5, 0);
+    }
     camera.zoom = zoom / 100;
     camera.updateProjectionMatrix();
-    controls.target.set(0, 5, 0);
     controls.update();
-  }, [view, zoom, reset, distanceScale]);
+  }, [view, zoom, reset, distanceScale, interiorPreview]);
   return (
     <div className="scene-container" ref={host} aria-label="Modelo 3D interativo da medalha" />
   );
