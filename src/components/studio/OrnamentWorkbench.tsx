@@ -7,7 +7,6 @@ import { defaultConfig } from "@/lib/studio/model";
 import { useStudio } from "./StudioProvider";
 import {
   buildPressOrnament,
-  defaultPressOrnamentConfig,
   disposePressOrnament,
   validatePressOrnamentConfig,
   type PressOrnamentConfig,
@@ -79,7 +78,7 @@ function Section({ title, icon, children }: { title: string; icon: ReactNode; ch
 }
 
 export default function OrnamentWorkbench() {
-  const { pressOrnament, setPressOrnament, projects, setProjects } = useStudio();
+  const { pressOrnament, setPressOrnament, setProjects } = useStudio();
   const [preview, setPreview] = useState<PressPreviewMode>("system");
   const [wireframe, setWireframe] = useState(false);
   const [reset, setReset] = useState(0);
@@ -90,7 +89,10 @@ export default function OrnamentWorkbench() {
     setPressOrnament((current) => validatePressOrnamentConfig({ ...current, [key]: value }));
   };
   const buildPreview = useCallback(() => buildPressOrnament(config, preview), [config, preview]);
-  const notify = (message: string) => setNotice(message);
+  const notify = (message: string) => {
+    setNotice(message);
+    window.setTimeout(() => setNotice(""), 3500);
+  };
 
   const saveProject = () => {
     setProjects((all) => [
@@ -232,6 +234,8 @@ export default function OrnamentWorkbench() {
                 <option value="glue">Aro plano para colagem</option>
               </select>
             </div>
+            <RangeControl label="Largura do aro de união" value={config.rimWidth} min={2.2}
+              max={Math.min(8, config.diameter / 8)} onChange={(value) => update("rimWidth", value)} />
             {config.joinMethod === "pins" && (
               <RangeControl label="Folga entre pino e furo" value={config.clearance} min={0.15} max={0.6}
                 onChange={(value) => update("clearance", value)} />
@@ -287,7 +291,7 @@ export default function OrnamentWorkbench() {
           </div>
           <div className="press-canvas">
             <ModelScene config={defaultConfig} view={preview === "flat" ? "2d" : "3d"}
-              zoom={100} reset={reset} wireframe={wireframe} buildObject={buildPreview} distanceScale={1.6} />
+              zoom={100} reset={reset} wireframe={wireframe} buildObject={buildPreview} distanceScale={preview === "system" ? 2.5 : 1.6} />
           </div>
           <div className="press-preview-footer">
             <span><i /> {config.diameter} mm · {config.form} · {config.pattern}</span>
