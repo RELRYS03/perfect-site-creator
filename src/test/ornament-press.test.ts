@@ -126,7 +126,7 @@ describe("ornamento de prensagem", () => {
       });
       expect(names).not.toContain("hanging-loop");
       expect(model.userData["previewMode"]).toBe("assembled");
-      expect(model.userData["config"].diameter).toBe(80);
+      expect(model.userData["config"].diameter).toBe(100);
     } finally {
       disposePressOrnament(model);
     }
